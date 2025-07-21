@@ -1018,6 +1018,133 @@
                 transform: scale(1) translateY(0);
             }
         }
+
+        /* Print Layout Editor Styles */
+        #printModal {
+            z-index: 50000 !important;
+        }
+        
+        .print-layout-toolbar {
+            z-index: 50001 !important;
+            position: relative;
+        }
+        
+        .print-layout-canvas {
+            z-index: 50001 !important;
+            position: relative;
+        }
+        
+        #printCanvas {
+            z-index: 50002 !important;
+            position: relative;
+        }
+        
+        .resize-container {
+            position: relative;
+            z-index: 50003 !important;
+        }
+
+        .resize-handle {
+            position: absolute;
+            background: #3b82f6;
+            border: 2px solid white;
+            width: 8px;
+            height: 8px;
+            z-index: 50010 !important;
+            /* DISABLED: Hide all resize handles - map frame auto-fits canvas */
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        .resize-handle:hover {
+            background: #1d4ed8;
+        }
+
+        .resize-handle-nw { top: -4px; left: -4px; cursor: nw-resize; }
+        .resize-handle-ne { top: -4px; right: -4px; cursor: ne-resize; }
+        .resize-handle-sw { bottom: -4px; left: -4px; cursor: sw-resize; }
+        .resize-handle-se { bottom: -4px; right: -4px; cursor: se-resize; }
+        .resize-handle-n { top: -4px; left: 50%; transform: translateX(-50%); cursor: n-resize; }
+        .resize-handle-s { bottom: -4px; left: 50%; transform: translateX(-50%); cursor: s-resize; }
+        .resize-handle-w { top: 50%; left: -4px; transform: translateY(-50%); cursor: w-resize; }
+        .resize-handle-e { top: 50%; right: -4px; transform: translateY(-50%); cursor: e-resize; }
+
+        .resize-container.dragging {
+            z-index: 50020 !important;
+        }
+
+        .resize-container.resizing {
+            z-index: 50020 !important;
+        }
+
+        #printCanvas {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border-radius: 4px;
+        }
+
+        #mapFrame {
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            transition: box-shadow 0.2s ease;
+        }
+
+        #mapFrame:hover {
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+        }
+
+        #mapFrame.active {
+            border-color: #1d4ed8;
+            box-shadow: 0 8px 20px rgba(29, 78, 216, 0.5);
+        }
+
+        #printMapContainer {
+            border-radius: 2px;
+            overflow: hidden;
+            z-index: 50004 !important;
+            position: relative;
+        }
+
+        /* Print map styles */
+        .print-map {
+            width: 100%;
+            height: 100%;
+            z-index: 50004 !important;
+            position: relative;
+        }
+        
+        /* Ensure print map leaflet elements don't interfere */
+        #printModal .leaflet-container {
+            z-index: 50004 !important;
+        }
+        
+        #printModal .leaflet-control-container {
+            z-index: 50005 !important;
+        }
+        
+        /* Title area styling */
+        #titleArea {
+            z-index: 50006 !important;
+            position: absolute;
+        }
+        
+        /* Force visibility for all print modal elements */
+        #printModal * {
+            visibility: visible !important;
+        }
+        
+        /* Prevent any child elements from being hidden behind map */
+        #printModal .glass-panel {
+            z-index: 50001 !important;
+            position: relative;
+        }
+        
+        /* Ensure all interactive elements are above the map */
+        #printModal button,
+        #printModal select,
+        #printModal input {
+            z-index: 50007 !important;
+            position: relative;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white overflow-hidden">
@@ -1196,6 +1323,16 @@
                                 <button id="clearFilterBtn" class="w-full px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md transition-colors text-sm font-medium">
                                     <i class="fas fa-times mr-2"></i>Clear Filter
                                 </button>
+                            </div>
+                            
+                            <!-- Filter Selected Button (Always Visible) -->
+                            <div class="mt-6">
+                                <button id="filterSelectedBtn" class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-md transition-colors text-sm font-medium" disabled>
+                                    <i class="fas fa-layer-group mr-2"></i>Filter Selected Features
+                                </button>
+                                <div class="text-xs text-gray-400 mt-1 text-center">
+                                    <span id="selectedFeaturesCount">No features selected</span>
+                                </div>
                             </div>
                             
                             <!-- Filter Status -->
@@ -1406,52 +1543,88 @@
         </div>
     </div>
 
-    <!-- Print Modal -->
-    <div id="printModal" class="fixed inset-0 modal-overlay z-50 hidden flex items-center justify-center">
-        <div class="glass-panel rounded-lg p-6 max-w-lg w-full mx-4">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-white">Print Map</h2>
-                <button id="closePrintModal" class="text-gray-400 hover:text-white">
+    <!-- Print Layout Modal -->
+    <div id="printModal" class="fixed inset-0 modal-overlay hidden" style="z-index: 50000 !important;">
+        <div class="w-full h-full bg-gray-900 flex flex-col" style="z-index: 50001 !important;">
+            <!-- Header -->
+            <div class="glass-panel flex justify-between items-center p-4 border-b border-gray-700 print-layout-toolbar">
+                <h2 class="text-xl font-bold text-white">Print Layout Editor</h2>
+                <button id="closePrintModal" class="text-gray-400 hover:text-white text-2xl">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">Map Title</label>
-                    <input type="text" id="mapTitle" value="Aera Map Export"
-                           class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white">
-                </div>
-                
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Page Size</label>
-                        <select id="pageSize" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white">
-                            <option value="1980x720">PPT Slide (1980x720)</option>
-                            <option value="1920x1080">Full HD (1920x1080)</option>
-                            <option value="1200x800">Standard (1200x800)</option>
+            <!-- Toolbar -->
+            <div class="glass-panel p-3 border-b border-gray-700 print-layout-toolbar">
+                <div class="flex items-center space-x-6">
+                    <!-- Canvas Size Selection -->
+                    <div class="flex items-center space-x-2">
+                        <label class="text-sm font-medium text-gray-300">Canvas Size:</label>
+                        <select id="canvasSize" class="px-3 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm">
+                            <option value="1980x1080" selected>PowerPoint Slide (1980×1080px)</option>
+                            <option value="1920x1080">Full HD (1920×1080px)</option>
+                            <option value="2480x3508">A4 Portrait (2480×3508px)</option>
+                            <option value="3508x2480">A4 Landscape (3508×2480px)</option>
+                            <option value="3508x4961">A3 Portrait (3508×4961px)</option>
+                            <option value="4961x3508">A3 Landscape (4961×3508px)</option>
+                            <option value="custom">Custom Size</option>
                         </select>
                     </div>
                     
-                    <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">Orientation</label>
-                        <select id="orientation" class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md text-white">
-                            <option value="landscape">Landscape</option>
-                            <option value="portrait">Portrait</option>
-                        </select>
+                    <!-- Custom Size Inputs (hidden by default) -->
+                    <div id="customSizeInputs" class="hidden flex items-center space-x-2">
+                        <label class="text-sm text-gray-300">Width:</label>
+                        <input type="number" id="customWidth" value="1980" class="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm">
+                        <label class="text-sm text-gray-300">Height:</label>
+                        <input type="number" id="customHeight" value="1080" class="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm">
+                        <label class="text-sm text-gray-300">px</label>
                     </div>
-                </div>
-                
-                <div class="flex items-center">
-                    <input type="checkbox" id="includeLegend" checked class="mr-2">
-                    <label class="text-sm text-gray-300">Include Legend</label>
-                </div>
-                
-                <div class="flex justify-end space-x-3">
-                    <button id="cancelPrint" class="px-4 py-2 text-gray-400 hover:text-white">Cancel</button>
-                    <button id="exportMap" class="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-md">
-                        Export
+                    
+                    <!-- Export Button -->
+                    <button id="exportLayoutBtn" class="ml-auto px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-md flex items-center space-x-2">
+                        <i class="fas fa-download"></i>
+                        <span>Export Layout</span>
                     </button>
+                </div>
+            </div>
+            
+            <!-- Canvas Container -->
+            <div class="flex-1 p-6 overflow-auto bg-gray-800 print-layout-canvas">
+                <div class="flex justify-center">
+                    <div id="printCanvas" class="bg-white shadow-2xl relative print-layout-canvas" 
+                         style="width: 990px; height: 540px; min-height: 400px; z-index: 50002 !important;">
+                        <!-- Map Frame (draggable and resizable) -->
+                        <div id="mapFrame" class="absolute border-2 border-blue-500 cursor-move resize-container"
+                             style="left: 50px; top: 80px; width: 800px; height: 400px;">
+                            <!-- Map Container -->
+                            <div id="printMapContainer" class="w-full h-full bg-gray-200 relative overflow-hidden">
+                                <div class="absolute inset-0 flex items-center justify-center text-gray-600">
+                                    <div class="text-center">
+                                        <i class="fas fa-map text-4xl mb-2"></i>
+                                        <p>Map Preview</p>
+                                        <p class="text-sm">Drag to pan • Scroll to zoom</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Resize Handles -->
+                            <div class="resize-handle resize-handle-nw"></div>
+                            <div class="resize-handle resize-handle-ne"></div>
+                            <div class="resize-handle resize-handle-sw"></div>
+                            <div class="resize-handle resize-handle-se"></div>
+                            <div class="resize-handle resize-handle-n"></div>
+                            <div class="resize-handle resize-handle-s"></div>
+                            <div class="resize-handle resize-handle-w"></div>
+                            <div class="resize-handle resize-handle-e"></div>
+                        </div>
+                        
+                        <!-- Title Area - Top Left -->
+                        <div id="titleArea" class="absolute top-4 left-4 w-96">
+                            <input type="text" id="layoutTitle" placeholder="Enter map title..." 
+                                   class="w-full text-xl font-bold border-none outline-none bg-transparent text-gray-800"
+                                   value="">
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1543,6 +1716,9 @@
     
     <!-- Supabase JavaScript Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- HTML2Canvas for Print Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <!-- Main Application Script -->
     <script>
@@ -1808,7 +1984,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
 
             // Add ESRI Imagery basemap
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Tiles © Esri — Developed by Isaac Enage for Ayala Land, Royal Asia Land, and AKL Properties.'
+                attribution: 'Developed by Isaac Enage for Ayala Land, Royal Asia Land, and AKL Properties.'
             }).addTo(map);
 
             // Move zoom control to bottom
@@ -1855,7 +2031,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             // No button listener needed as the panel is always accessible
 
             document.getElementById('printBtn').addEventListener('click', () => {
-                alert('Print functionality temporarily disabled to prevent header blur issues.');
+                document.getElementById('printModal').classList.remove('hidden');
             });
 
             // Modal close listeners (but modals won't be opened from header buttons)
@@ -1866,6 +2042,9 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             
             // Symbology listeners
             setupSymbologyListeners();
+            
+            // Print layout editor listeners
+            setupPrintListeners();
             
             // Selection tool listeners
             setupSelectionListeners();
@@ -1989,12 +2168,32 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             // Print Modal
             document.getElementById('closePrintModal').addEventListener('click', () => {
                 document.getElementById('printModal').classList.add('hidden');
+                
+                // Cleanup print map instance
+                if (window.printMap) {
+                    try {
+                        window.printMap.remove();
+                        window.printMap = null;
+                    } catch (error) {
+                        console.warn('Error cleaning up print map:', error);
+                    }
+                }
+                
+                console.log('🖨️ Print layout editor closed');
             });
 
             // Symbology Modal
             document.getElementById('closeSymbologyModal').addEventListener('click', () => {
                 document.getElementById('symbologyModal').classList.add('hidden');
             });
+        }
+
+        // Update print map when main map layers change
+        function updatePrintMapLayers() {
+            if (window.printMap && !document.getElementById('printModal').classList.contains('hidden')) {
+                console.log('🔄 Updating print map layers to match main map...');
+                createPrintMapInstance();
+            }
         }
 
         // Setup file upload listeners
@@ -2206,10 +2405,10 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             layers.set(layerId, {
                 layer: layer,
                 name: layerName,
-                data: geoData,
+                data: geoData, // Store original GeoJSON data
                 visible: true,
                 style: style,
-                originalData: geoData,
+                originalData: JSON.parse(JSON.stringify(geoData)), // Deep copy for filters
                 opacity: 1.0, // Default opacity (100%)
                 supabaseLayerId: supabaseLayerId, // Track the Supabase layer ID for database layers
                 isPermanent: isPermanent, // Mark permanent layers (like Aera.geojson)
@@ -2261,7 +2460,10 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             }
 
             // Update filter system with new layer
-            populateFilterLayers();
+            setTimeout(() => {
+                console.log(`Layer ${layerId} added, updating filter system...`);
+                populateFilterLayers();
+            }, 50);
 
             // Return the layer ID for reference
             return layerId;
@@ -2275,7 +2477,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                 if (!currentUser) {
                     console.error('User not authenticated, cannot save layer');
                     showNotification('Please log in to save layers to cloud', 'error');
-                    return;
+                    return false;
                 }
 
                 console.log(`Attempting to save layer "${layerName}" to Supabase...`);
@@ -2303,17 +2505,22 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                 if (checkError) {
                     console.error('Error checking for existing layers:', checkError);
                     showNotification(`Error checking cloud storage: ${checkError.message}`, 'error');
-                    return;
+                    return false;
                 }
 
                 // If layer exists, update it instead of creating a new one
                 if (existingLayers && existingLayers.length > 0) {
                     console.log(`Updating existing layer "${layerName}" in Supabase...`);
+                    
+                    // Get layer style safely
+                    const layerInfo = layers.get(layerId);
+                    const layerStyle = layerInfo ? layerInfo.style : null;
+                    
                     const { data, error } = await supabase
                         .from('layers')
                         .update({
                             geojson_data: geoData,
-                            style: layers.get(layerId).style,
+                            style: layerStyle,
                             updated_at: new Date().toISOString()
                         })
                         .eq('id', existingLayers[0].id)
@@ -2323,9 +2530,9 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                     if (error) {
                         console.error('Error updating layer in Supabase:', error);
                         showNotification(`Failed to update layer "${layerName}" in cloud: ${error.message}`, 'error');
+                        return false;
                     } else if (data && data.length > 0) {
                         // Store the Supabase ID in the layer info
-                        const layerInfo = layers.get(layerId);
                         if (layerInfo) {
                             layerInfo.supabaseLayerId = data[0].id;
                             layerInfo.fromDatabase = true; // Mark as database layer
@@ -2338,10 +2545,16 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                         }
                         console.log('Layer updated in Supabase successfully:', layerName, 'with ID:', data[0].id);
                         showNotification(`Layer "${layerName}" updated in AKL cloud`, 'success');
+                        return true;
                     }
                 } else {
                     // Create new layer
                     console.log(`Creating new layer "${layerName}" in Supabase...`);
+                    
+                    // Get layer style safely
+                    const layerInfo = layers.get(layerId);
+                    const layerStyle = layerInfo ? layerInfo.style : null;
+                    
                     const { data, error } = await supabase
                         .from('layers')
                         .insert([
@@ -2350,7 +2563,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                                 name: layerName,
                                 geojson_data: geoData,
                                 created_at: new Date().toISOString(),
-                                style: layers.get(layerId).style,
+                                style: layerStyle,
                                 user_id: currentUser.id // Associate with current user
                             }
                         ])
@@ -2359,9 +2572,9 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                     if (error) {
                         console.error('Error saving layer to Supabase:', error);
                         showNotification(`Failed to save layer "${layerName}" to cloud: ${error.message}`, 'error');
+                        return false;
                     } else if (data && data.length > 0) {
                         // Store the Supabase ID in the layer info for future reference
-                        const layerInfo = layers.get(layerId);
                         if (layerInfo) {
                             layerInfo.supabaseLayerId = data[0].id;
                             layerInfo.fromDatabase = true; // Mark as database layer
@@ -2374,11 +2587,15 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                         }
                         console.log('Layer saved to Supabase successfully:', layerName, 'with ID:', data[0].id);
                         showNotification(`Layer "${layerName}" saved to AKL cloud`, 'success');
+                        return true;
                     }
                 }
+                
+                return false; // If we reach here, something went wrong
             } catch (error) {
                 console.error('Network error saving to Supabase:', error);
                 showNotification(`Network error saving layer "${layerName}" to cloud: ${error.message}`, 'error');
+                return false;
             }
         }
 
@@ -2613,6 +2830,12 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                 .then(data => {
                     // Mark as permanent layer and from local source
                     addDataToMap(data, 'Aera.geojson', false, null, true);
+                    
+                    // Populate filter layers after initial data is loaded
+                    setTimeout(() => {
+                        console.log('Initial data loaded, populating filter layers');
+                        populateFilterLayers();
+                    }, 100);
                 })
                 .catch(error => {
                     console.error('Error loading Aera.geojson:', error);
@@ -2625,6 +2848,12 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                     loadLayersFromSupabase();
                     // Also check for Aera layer symbology after loading other layers
                     checkAndApplyAeraSymbology();
+                    
+                    // Populate filter layers again after Supabase layers load
+                    setTimeout(() => {
+                        console.log('Supabase layers loaded, refreshing filter layers');
+                        populateFilterLayers();
+                    }, 500);
                 }, 500);
             }
         }
@@ -2754,6 +2983,9 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             
             // Update selection layer dropdown
             updateSelectionLayerDropdown();
+            
+            // Update print map if open
+            updatePrintMapLayers();
         }
 
         // Setup drag and drop for layer items
@@ -3777,11 +4009,28 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
 
         // Setup filter panel listeners
         function setupNewFilterListeners() {
+            console.log('Setting up filter listeners...');
+            
+            // Check if DOM elements exist
+            const filterLayerSelect = document.getElementById('filterLayerSelect');
+            const filterFieldSelect = document.getElementById('filterFieldSelect');
+            
+            if (!filterLayerSelect) {
+                console.error('filterLayerSelect element not found!');
+                return;
+            }
+            if (!filterFieldSelect) {
+                console.error('filterFieldSelect element not found!');
+                return;
+            }
+            
+            console.log('Filter DOM elements found, adding listeners...');
+            
             // Layer selection
-            document.getElementById('filterLayerSelect').addEventListener('change', handleFilterLayerChange);
+            filterLayerSelect.addEventListener('change', handleFilterLayerChange);
             
             // Field selection
-            document.getElementById('filterFieldSelect').addEventListener('change', handleFilterFieldChange);
+            filterFieldSelect.addEventListener('change', handleFilterFieldChange);
             
             // Operator selection
             document.getElementById('filterOperatorSelect').addEventListener('change', handleFilterOperatorChange);
@@ -3793,42 +4042,175 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             // Action buttons
             document.getElementById('applyFilterBtn').addEventListener('click', applyNewFilter);
             document.getElementById('clearFilterBtn').addEventListener('click', clearNewFilter);
+            
+            // Filter Selected button
+            document.getElementById('filterSelectedBtn').addEventListener('click', createLayerFromSelection);
+            
+            console.log('Filter listeners added successfully');
+            
+            // Initial population of filter layers (in case layers are already loaded)
+            setTimeout(() => {
+                console.log('Attempting initial population of filter layers...');
+                populateFilterLayers();
+                // Ensure Aera specifically gets added
+                ensureAeraInFilterDropdown();
+            }, 500);
+        }
+
+        // Enhanced function to ensure Aera layer appears in filter
+        function ensureAeraInFilterDropdown() {
+            const layerSelect = document.getElementById('filterLayerSelect');
+            if (!layerSelect) return;
+
+            console.log('🎯 Ensuring Aera layer appears in filter dropdown...');
+            
+            // Check if Aera option already exists
+            const existingAeraOption = Array.from(layerSelect.options).find(option => 
+                option.textContent.toLowerCase().includes('aera') || option.value.includes('aera')
+            );
+            
+            if (existingAeraOption) {
+                console.log('✅ Aera layer already in dropdown');
+                return;
+            }
+
+            // Look for Aera layer in layers Map
+            let aeraLayerId = null;
+            let aeraLayerInfo = null;
+            
+            layers.forEach((layerInfo, layerId) => {
+                if (layerInfo.name && (layerInfo.name.toLowerCase().includes('aera') || layerInfo.name === 'Aera')) {
+                    aeraLayerId = layerId;
+                    aeraLayerInfo = layerInfo;
+                    console.log(`✅ Found Aera layer in layers map: ${layerId} - ${layerInfo.name}`);
+                }
+            });
+
+            // If found, add it to the dropdown
+            if (aeraLayerId && aeraLayerInfo) {
+                // Check if it has data and features
+                let hasValidData = false;
+                if (aeraLayerInfo.data && aeraLayerInfo.data.features && aeraLayerInfo.data.features.length > 0) {
+                    const firstFeature = aeraLayerInfo.data.features[0];
+                    if (firstFeature.properties && Object.keys(firstFeature.properties).length > 0) {
+                        hasValidData = true;
+                    }
+                }
+
+                if (hasValidData) {
+                    const option = document.createElement('option');
+                    option.value = aeraLayerId;
+                    option.textContent = aeraLayerInfo.name;
+                    layerSelect.appendChild(option);
+                    console.log(`✅ Added Aera layer to filter dropdown: ${aeraLayerInfo.name}`);
+                } else {
+                    console.log('⚠️ Aera layer found but has no valid feature data');
+                }
+            } else {
+                console.log('⚠️ Aera layer not found in layers Map');
+                // Try to load it directly from file as fallback
+                tryLoadAeraDirectly();
+            }
+        }
+
+        // Fallback function to load Aera data directly for filtering
+        function tryLoadAeraDirectly() {
+            console.log('🔄 Trying to load Aera.geojson directly for filter...');
+            
+            fetch('Aera.geojson')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('✅ Loaded Aera.geojson directly, adding to filter dropdown');
+                    
+                    const layerSelect = document.getElementById('filterLayerSelect');
+                    if (layerSelect && data.features && data.features.length > 0) {
+                        const option = document.createElement('option');
+                        option.value = 'aera-direct';
+                        option.textContent = 'Aera (Direct Load)';
+                        layerSelect.appendChild(option);
+                        
+                        // Store this data temporarily for filter use
+                        window.aeraDirectData = data;
+                        console.log('✅ Aera data stored for direct filter access');
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Failed to load Aera.geojson directly:', error);
+                });
         }
 
         // Populate filter layer dropdown (Step 1)
         function populateFilterLayers() {
             console.log('Populating filter layers...');
             const layerSelect = document.getElementById('filterLayerSelect');
+            
+            if (!layerSelect) {
+                console.error('Filter layer select element not found');
+                return;
+            }
+            
             layerSelect.innerHTML = '<option value="">Choose a layer to filter</option>';
 
             let layerCount = 0;
+            console.log(`Total layers available: ${layers.size}`);
+            
             layers.forEach((layerInfo, layerId) => {
                 console.log(`Checking layer ${layerId}:`, {
+                    name: layerInfo.name,
                     visible: layerInfo.visible,
                     hasData: !!(layerInfo.data),
+                    hasOriginalData: !!(layerInfo.originalData),
                     hasFeatures: !!(layerInfo.data && layerInfo.data.features),
-                    featureCount: layerInfo.data && layerInfo.data.features ? layerInfo.data.features.length : 0
+                    featureCount: layerInfo.data && layerInfo.data.features ? layerInfo.data.features.length : 0,
+                    hasLayer: !!(layerInfo.layer)
                 });
                 
-                if (layerInfo.visible && layerInfo.data && layerInfo.data.features && layerInfo.data.features.length > 0) {
-                    // Check if layer has attribute data
-                    const firstFeature = layerInfo.data.features[0];
-                    if (firstFeature.properties && Object.keys(firstFeature.properties).length > 0) {
-                        const option = document.createElement('option');
-                        option.value = layerId;
-                        option.textContent = layerInfo.name;
-                        layerSelect.appendChild(option);
-                        layerCount++;
-                        console.log(`Added layer to filter dropdown: ${layerInfo.name}`);
+                if (layerInfo.visible && layerInfo.data) {
+                    // Enhanced feature detection
+                    let features = [];
+                    
+                    if (layerInfo.data.type === 'FeatureCollection') {
+                        features = layerInfo.data.features || [];
+                    } else if (layerInfo.data.type === 'Feature') {
+                        features = [layerInfo.data];
+                    } else if (Array.isArray(layerInfo.data)) {
+                        features = layerInfo.data;
+                    }
+                    
+                    console.log(`Layer ${layerId} has ${features.length} features`);
+                    
+                    if (features.length > 0) {
+                        // Check if layer has attribute data
+                        const firstFeature = features[0];
+                        if (firstFeature && firstFeature.properties && Object.keys(firstFeature.properties).length > 0) {
+                            const option = document.createElement('option');
+                            option.value = layerId;
+                            option.textContent = layerInfo.name;
+                            layerSelect.appendChild(option);
+                            layerCount++;
+                            console.log(`Added layer to filter dropdown: ${layerInfo.name} (${Object.keys(firstFeature.properties).length} fields)`);
+                        } else {
+                            console.log(`Layer ${layerId} has no properties, skipping`);
+                        }
                     } else {
-                        console.log(`Layer ${layerId} has no properties, skipping`);
+                        console.log(`Layer ${layerId} has no features, skipping`);
                     }
                 } else {
-                    console.log(`Layer ${layerId} failed basic checks, skipping`);
+                    console.log(`Layer ${layerId} failed visibility/data checks:`, {
+                        visible: layerInfo.visible,
+                        hasData: !!(layerInfo.data)
+                    });
                 }
             });
             
             console.log(`Populated ${layerCount} layers in filter dropdown`);
+            
+            if (layerCount === 0) {
+                const noLayersOption = document.createElement('option');
+                noLayersOption.value = "";
+                noLayersOption.textContent = "No filterable layers available";
+                layerSelect.appendChild(noLayersOption);
+            }
         }
 
         // Handle layer selection change (Step 1 → Step 2)
@@ -3842,15 +4224,29 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             resetFilterSteps(['field', 'operator', 'value', 'actions']);
             
             if (layerId && layers.has(layerId)) {
-                console.log(`Layer ${layerId} exists, populating fields...`);
+                console.log(`Layer ${layerId} exists in layers map, populating fields...`);
+                const layerInfo = layers.get(layerId);
+                console.log('Layer info for field population:', {
+                    name: layerInfo.name,
+                    hasData: !!(layerInfo.data),
+                    hasOriginalData: !!(layerInfo.originalData),
+                    visible: layerInfo.visible
+                });
                 
                 // Show field section first
                 document.getElementById('filterFieldSection').style.display = 'block';
                 
-                // Then populate fields
-                populateFilterFields(layerId);
+                // FIXED: Check if this is Aera layer and use direct loading
+                if (layerInfo.name && layerInfo.name.toLowerCase().includes('aera')) {
+                    console.log('🎯 Detected Aera layer - using direct Aera.geojson loading');
+                    window.populateAeraFieldsDirect();
+                } else {
+                    // For non-Aera layers, use the original method
+                    populateFilterFields(layerId);
+                }
             } else {
                 console.log(`Layer ${layerId} does not exist or is invalid`);
+                console.log('Available layers:', Array.from(layers.keys()));
                 document.getElementById('filterFieldSection').style.display = 'none';
             }
         }
@@ -3859,51 +4255,117 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
         function populateFilterFields(layerId) {
             const fieldSelect = document.getElementById('filterFieldSelect');
             
-            console.log(`Populating fields for layer: ${layerId}`);
+            console.log(`🔍 DEBUG: Populating fields for layer: ${layerId}`);
+            console.log('🔍 DEBUG: Filter field select element:', fieldSelect);
             
             // Show loading state
             fieldSelect.innerHTML = '<option value="">Loading fields...</option>';
+            console.log('🔍 DEBUG: Set loading state, dropdown innerHTML:', fieldSelect.innerHTML);
 
-            const layerInfo = layers.get(layerId);
-            console.log(`Layer info found:`, layerInfo);
-            
-            if (!layerInfo) {
-                console.error(`Layer ${layerId} not found in layers map`);
-                fieldSelect.innerHTML = '<option value="">Layer not found</option>';
-                return;
+            let layerInfo;
+            let geoJsonData;
+
+            // Handle special case of direct Aera loading
+            if (layerId === 'aera-direct' && window.aeraDirectData) {
+                console.log('🔍 DEBUG: Using directly loaded Aera data for field population');
+                geoJsonData = window.aeraDirectData;
+            } else {
+                layerInfo = layers.get(layerId);
+                console.log(`🔍 DEBUG: Layer info found:`, layerInfo);
+                
+                if (!layerInfo) {
+                    console.error(`❌ Layer ${layerId} not found in layers map`);
+                    fieldSelect.innerHTML = '<option value="">Layer not found</option>';
+                    console.log('🔍 DEBUG: After error, dropdown innerHTML:', fieldSelect.innerHTML);
+                    return;
+                }
+
+                // Enhanced data access - check both data and originalData properties
+                geoJsonData = layerInfo.data || layerInfo.originalData;
+                console.log('🔍 DEBUG: GeoJSON data:', geoJsonData ? 'Found' : 'Not found');
+                
+                // If still no data, try to extract from the Leaflet layer itself
+                if (!geoJsonData && layerInfo.layer) {
+                    console.log(`🔍 DEBUG: Attempting to extract data from Leaflet layer`);
+                    // Try to get data from the layer's toGeoJSON method
+                    try {
+                        geoJsonData = layerInfo.layer.toGeoJSON();
+                        console.log(`🔍 DEBUG: Successfully extracted data from layer:`, geoJsonData);
+                        
+                        // Update layer info with extracted data for future use
+                        layerInfo.data = geoJsonData;
+                    } catch (error) {
+                        console.error(`🔍 DEBUG: Failed to extract data from layer:`, error);
+                    }
+                }
             }
 
-            if (!layerInfo.data) {
-                console.error(`Layer ${layerId} has no data`);
+            if (!geoJsonData) {
+                console.error(`❌ Layer ${layerId} has no accessible data. Attempting alternative methods...`);
+                
+                // Last resort: check if this is a known layer like Aera and refetch it
+                if (layerInfo && (layerInfo.name === 'Aera' || layerInfo.name === 'Aera.geojson')) {
+                    console.log('🔍 DEBUG: Attempting to reload Aera.geojson data...');
+                    fetch('Aera.geojson')
+                        .then(response => response.json())
+                        .then(data => {
+                            layerInfo.data = data;
+                            layerInfo.originalData = JSON.parse(JSON.stringify(data));
+                            populateFilterFields(layerId); // Recursive call with updated data
+                        })
+                        .catch(error => {
+                            console.error('❌ Failed to reload Aera data:', error);
+                            fieldSelect.innerHTML = '<option value="">No layer data available</option>';
+                        });
+                    return;
+                }
+                
                 fieldSelect.innerHTML = '<option value="">No layer data available</option>';
+                console.log('🔍 DEBUG: After no data error, dropdown innerHTML:', fieldSelect.innerHTML);
                 return;
             }
 
-            if (!layerInfo.data.features || layerInfo.data.features.length === 0) {
-                console.error(`Layer ${layerId} has no features`);
+            // Handle both FeatureCollection and single Feature
+            let features = [];
+            if (geoJsonData.type === 'FeatureCollection') {
+                features = geoJsonData.features || [];
+            } else if (geoJsonData.type === 'Feature') {
+                features = [geoJsonData];
+            } else if (Array.isArray(geoJsonData)) {
+                features = geoJsonData;
+            }
+
+            console.log(`🔍 DEBUG: Features found: ${features.length}`);
+
+            if (features.length === 0) {
+                console.error(`❌ Layer ${layerId} has no features`);
                 fieldSelect.innerHTML = '<option value="">No features in layer</option>';
+                console.log('🔍 DEBUG: After no features error, dropdown innerHTML:', fieldSelect.innerHTML);
                 return;
             }
 
             // Get the first feature to examine its properties
-            const firstFeature = layerInfo.data.features[0];
-            console.log(`First feature:`, firstFeature);
+            const firstFeature = features[0];
+            console.log(`🔍 DEBUG: First feature:`, firstFeature);
             
-            if (!firstFeature.properties) {
-                console.error(`First feature has no properties`);
+            if (!firstFeature || !firstFeature.properties) {
+                console.error(`❌ First feature has no properties`);
                 fieldSelect.innerHTML = '<option value="">No attributes found</option>';
+                console.log('🔍 DEBUG: After no properties error, dropdown innerHTML:', fieldSelect.innerHTML);
                 return;
             }
 
             const properties = firstFeature.properties;
             const fieldNames = Object.keys(properties);
-            console.log(`Available fields:`, fieldNames);
+            console.log(`🔍 DEBUG: Available fields:`, fieldNames);
 
-            // Clear loading state and add default option
+            // Clear loading state and add default option - THIS IS CRITICAL
             fieldSelect.innerHTML = '<option value="">Choose a field to filter by</option>';
+            console.log('🔍 DEBUG: After clearing and setting default, dropdown innerHTML:', fieldSelect.innerHTML);
 
             if (fieldNames.length === 0) {
                 fieldSelect.innerHTML = '<option value="">No fields available</option>';
+                console.log('🔍 DEBUG: After no fieldNames error, dropdown innerHTML:', fieldSelect.innerHTML);
                 return;
             }
 
@@ -3913,6 +4375,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             
             // Sort fields alphabetically for better UX and categorize by data type
             const fieldsToShow = filteredFields.length > 0 ? filteredFields : fieldNames;
+            console.log(`🔍 DEBUG: Fields to show (after system field filtering):`, fieldsToShow);
             
             // Analyze field types from sample values
             const fieldInfo = [];
@@ -3937,17 +4400,29 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             
             // Sort by name
             fieldInfo.sort((a, b) => a.name.localeCompare(b.name));
+            console.log(`🔍 DEBUG: Field info prepared:`, fieldInfo);
             
-            // Add fields to dropdown
+            // Add fields to dropdown - THIS IS THE CRITICAL PART
+            let optionsAdded = 0;
             fieldInfo.forEach(field => {
                 const option = document.createElement('option');
                 option.value = field.name;
                 // Show field name with a hint about data type
                 option.textContent = `${field.name} (${field.type})`;
                 fieldSelect.appendChild(option);
+                optionsAdded++;
+                console.log(`🔍 DEBUG: Added option: ${field.name} (${field.type})`);
             });
 
-            console.log(`Populated ${fieldsToShow.length} fields into dropdown`);
+            console.log(`✅ DEBUG: Populated ${fieldsToShow.length} fields into dropdown, options added: ${optionsAdded}`);
+            console.log('🔍 DEBUG: Final dropdown innerHTML:', fieldSelect.innerHTML);
+            console.log('🔍 DEBUG: Final dropdown options count:', fieldSelect.options.length);
+            
+            // Force a DOM update - sometimes needed for complex applications
+            setTimeout(() => {
+                console.log('🔍 DEBUG: After timeout - dropdown options count:', fieldSelect.options.length);
+                console.log('🔍 DEBUG: After timeout - dropdown innerHTML length:', fieldSelect.innerHTML.length);
+            }, 10);
         }
 
         // Handle field selection change (Step 2 → Step 3)
@@ -4025,12 +4500,22 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             
             if (!layerId || !fieldName) return;
             
-            const layerInfo = layers.get(layerId);
-            if (!layerInfo) return;
+            let geoJsonData;
+            
+            // Handle direct Aera loading
+            if (layerId === 'aera-direct' && window.aeraDirectData) {
+                geoJsonData = window.aeraDirectData;
+            } else {
+                const layerInfo = layers.get(layerId);
+                if (!layerInfo) return;
+                geoJsonData = layerInfo.data;
+            }
+            
+            if (!geoJsonData || !geoJsonData.features) return;
             
             // Get unique values from the field
             const uniqueValues = new Set();
-            layerInfo.data.features.forEach(feature => {
+            geoJsonData.features.forEach(feature => {
                 const value = feature.properties[fieldName];
                 if (value !== null && value !== undefined && value !== '') {
                     uniqueValues.add(value.toString());
@@ -4056,7 +4541,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                 multiList.innerHTML = '';
                 
                 sortedValues.forEach(value => {
-                    const label = document.createElement('label');
+                    const label = document.createElement('label');http://127.0.0.1:3000/index.html#select-panel
                     label.className = 'flex items-center space-x-2 text-sm text-gray-300 cursor-pointer mb-2';
                     
                     const checkbox = document.createElement('input');
@@ -4109,14 +4594,34 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                     return;
                 }
             }
+
+            let originalData;
+            let layerInfo;
             
-            const layerInfo = layers.get(selectedLayer);
-            if (!layerInfo) return;
+            // Handle direct Aera loading
+            if (selectedLayer === 'aera-direct' && window.aeraDirectData) {
+                originalData = window.aeraDirectData;
+                console.log('Using directly loaded Aera data for filtering');
+            } else {
+                layerInfo = layers.get(selectedLayer);
+                if (!layerInfo) {
+                    alert('Selected layer not found. Please refresh and try again.');
+                    return;
+                }
+                originalData = layerInfo.originalData || layerInfo.data;
+            }
+            
+            if (!originalData || !originalData.features) {
+                alert('Layer data not available for filtering.');
+                return;
+            }
             
             // Apply filter logic
-            const filteredFeatures = layerInfo.originalData.features.filter(feature => {
+            const filteredFeatures = originalData.features.filter(feature => {
                 return evaluateFilterCondition(feature, selectedField, selectedOperator, filterValue);
             });
+            
+            console.log(`🔍 Filtered ${originalData.features.length} features down to ${filteredFeatures.length}`);
             
             if (filteredFeatures.length === 0) {
                 alert('No features match the filter criteria.');
@@ -4349,7 +4854,441 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             }
         }
 
+        // === FILTER SELECTED FEATURES FUNCTIONALITY ===
+        
+        // Update Filter Selected button state based on current selection
+        function updateFilterSelectedButton() {
+            const button = document.getElementById('filterSelectedBtn');
+            const countSpan = document.getElementById('selectedFeaturesCount');
+            
+            if (!button || !countSpan) {
+                console.error("❌ Missing required elements for Filter Selected button");
+                return;
+            }
+            
+            const selectedCount = getSelectedFeaturesCount();
+            
+            if (selectedCount > 0) {
+                button.disabled = false;
+                button.title = `Create layer from ${selectedCount} selected feature${selectedCount > 1 ? 's' : ''}`;
+                countSpan.textContent = `${selectedCount} feature${selectedCount > 1 ? 's' : ''} selected`;
+                countSpan.className = 'text-xs text-green-400 mt-1 text-center';
+            } else {
+                button.disabled = true;
+                button.title = 'No features selected. Use the Selection Tool first.';
+                countSpan.textContent = 'No features selected';
+                countSpan.className = 'text-xs text-gray-400 mt-1 text-center';
+            }
+        }
+        
+        // Get count of currently selected features
+        function getSelectedFeaturesCount() {
+            // Use the global selectedFeatures array from selection tool
+            return selectedFeatures ? selectedFeatures.length : 0;
+        }
+        
+        // Get currently selected features as GeoJSON
+        function getSelectedFeaturesAsGeoJSON() {
+            // Use the global selectedFeatures array from selection tool
+            if (!selectedFeatures || selectedFeatures.length === 0) {
+                return null;
+            }
+            
+            // Convert to proper GeoJSON FeatureCollection
+            const geoJsonFeatures = selectedFeatures.map(selectionItem => {
+                // selectionItem has structure: {layerId, layerName, feature, properties}
+                const feature = selectionItem.feature;
+                
+                // If feature has toGeoJSON method (Leaflet layer), use it
+                if (feature && typeof feature.toGeoJSON === 'function') {
+                    return feature.toGeoJSON();
+                }
+                
+                // If feature has feature property (wrapped), use it
+                if (feature && feature.feature && feature.feature.type === 'Feature') {
+                    return feature.feature;
+                }
+                
+                // Fallback: create GeoJSON from properties
+                if (selectionItem.properties) {
+                    return {
+                        type: 'Feature',
+                        geometry: feature.toGeoJSON ? feature.toGeoJSON().geometry : null,
+                        properties: selectionItem.properties
+                    };
+                }
+                
+                return null;
+            }).filter(f => f && f.type === 'Feature'); // Only include valid features
+            
+            return {
+                type: 'FeatureCollection',
+                features: geoJsonFeatures
+            };
+        }
+        
+        // Create a new persistent layer from selected features
+        async function createLayerFromSelection() {
+            console.log('🎯 Creating layer from selected features...');
+            
+            const selectedGeoJSON = getSelectedFeaturesAsGeoJSON();
+            
+            if (!selectedGeoJSON || selectedGeoJSON.features.length === 0) {
+                alert('No features selected. Please use the Selection Tool to select features first.');
+                return;
+            }
+            
+            console.log(`📊 Creating layer from ${selectedGeoJSON.features.length} selected features`);
+            
+            // Generate unique layer ID and name
+            const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+            const layerId = `filtered-selection-${Date.now()}`;
+            const layerName = `Filtered Selection ${timestamp}`;
+            
+            // Create default style for the new layer
+            const defaultStyle = {
+                fillColor: '#ff7800',
+                weight: 2,
+                opacity: 1,
+                color: '#ff7800',
+                dashArray: '3',
+                fillOpacity: 0.7
+            };
+            
+            try {
+                // Create the layer on the map first
+                const newLayer = L.geoJSON(selectedGeoJSON, {
+                    style: defaultStyle,
+                    onEachFeature: (feature, layer) => {
+                        // Add popup with feature properties
+                        if (feature.properties) {
+                            let popupContent = '<div class="feature-popup">';
+                            popupContent += `<h4 class="popup-title">${layerName}</h4>`;
+                            for (let key in feature.properties) {
+                                if (feature.properties.hasOwnProperty(key)) {
+                                    popupContent += `<p><strong>${key}:</strong> ${feature.properties[key]}</p>`;
+                                }
+                            }
+                            popupContent += '</div>';
+                            
+                            safeBindPopup(layer, popupContent);
+                        }
+                    }
+                }).addTo(map);
+                
+                // Add to layers map BEFORE saving to Supabase (so style is available)
+                layers.set(layerId, {
+                    layer: newLayer,
+                    name: layerName,
+                    visible: true,
+                    data: selectedGeoJSON,
+                    originalData: selectedGeoJSON,
+                    style: defaultStyle,
+                    isPermanent: false,
+                    isUserGenerated: true,
+                    createdAt: new Date().toISOString()
+                });
+                
+                // Now save to Supabase (layer info is available)
+                console.log('💾 Saving filtered layer to Supabase...');
+                const success = await saveLayerToSupabase(layerId, layerName, selectedGeoJSON);
+                
+                if (!success) {
+                    // If Supabase save fails, we can still keep the local layer
+                    console.warn('⚠️ Supabase save failed, but layer created locally');
+                }
+                
+                // Add to layer order (at the top for visibility)
+                layerOrder.unshift(layerId);
+                
+                // Update UI
+                updateLayersList();
+                updateLegend();
+                
+                // Zoom to new layer
+                if (newLayer.getBounds().isValid()) {
+                    map.fitBounds(newLayer.getBounds());
+                }
+                
+                // Show success message
+                alert(`✅ Filtered layer "${layerName}" created and saved!\n\nFeatures: ${selectedGeoJSON.features.length}\nLayer ID: ${layerId}`);
+                
+                // Optionally prompt for rename
+                setTimeout(() => {
+                    if (confirm('Would you like to rename this layer now?')) {
+                        renameLayer(layerId, layerName);
+                    }
+                }, 1000);
+                
+                console.log(`✅ Successfully created filtered layer: ${layerName}`);
+                
+            } catch (error) {
+                console.error('❌ Failed to create filtered layer:', error);
+                alert(`❌ Failed to create filtered layer: ${error.message}`);
+            }
+        }
+        
+        // Auto-update Filter Selected button when selection changes
+        // This should be called whenever selection state changes
+        function onSelectionChanged() {
+            updateFilterSelectedButton();
+        }
+        
+        // Initialize Filter Selected button state
+        setTimeout(() => {
+            updateFilterSelectedButton();
+            
+            // Set up periodic check for selection changes (fallback)
+            setInterval(updateFilterSelectedButton, 2000);
+        }, 1000);
+        
+        // Make selection monitoring functions available globally
+        window.updateFilterSelectedButton = updateFilterSelectedButton;
+        window.onSelectionChanged = onSelectionChanged;
+        
+        // Add debugging functions for testing
+        window.debugFilterSelectedButton = function() {
+            console.log("🧪 MANUAL DEBUG TEST");
+            console.log("selectedFeatures:", selectedFeatures);
+            console.log("selectedFeatures.length:", selectedFeatures ? selectedFeatures.length : 'undefined');
+            console.log("Button element:", document.getElementById('filterSelectedBtn'));
+            console.log("Count span element:", document.getElementById('selectedFeaturesCount'));
+            updateFilterSelectedButton();
+        };
+        
+        window.testButtonEnable = function() {
+            console.log("🧪 MANUAL BUTTON ENABLE TEST");
+            const button = document.getElementById('filterSelectedBtn');
+            if (button) {
+                button.disabled = false;
+                console.log("Button manually enabled");
+            } else {
+                console.log("Button not found");
+            }
+        };
+
         // === END NEW FILTER SYSTEM ===
+        
+        // Testing utilities for filter system
+        function testAeraFilterAccess() {
+            console.log('🧪 Testing Aera filter access...');
+            
+            // Test 1: Check if Aera layer is in layers Map
+            console.log('📊 Checking layers Map for Aera:');
+            let aeraFound = false;
+            layers.forEach((layerInfo, layerId) => {
+                if (layerInfo.name && layerInfo.name.toLowerCase().includes('aera')) {
+                    console.log(`✅ Found Aera layer: ${layerId} - ${layerInfo.name}`);
+                    console.log('  - Has data:', !!(layerInfo.data));
+                    console.log('  - Has originalData:', !!(layerInfo.originalData));
+                    console.log('  - Feature count:', layerInfo.data?.features?.length || 0);
+                    console.log('  - First feature properties:', layerInfo.data?.features?.[0]?.properties ? Object.keys(layerInfo.data.features[0].properties) : 'None');
+                    aeraFound = true;
+                }
+            });
+            
+            if (!aeraFound) {
+                console.log('❌ No Aera layer found in layers Map');
+            }
+            
+            // Test 2: Check direct Aera data
+            console.log('🔍 Checking for direct Aera data:');
+            if (window.aeraDirectData) {
+                console.log('✅ Direct Aera data available');
+                console.log('  - Feature count:', window.aeraDirectData.features?.length || 0);
+                console.log('  - First feature properties:', window.aeraDirectData.features?.[0]?.properties ? Object.keys(window.aeraDirectData.features[0].properties) : 'None');
+            } else {
+                console.log('❌ No direct Aera data found');
+            }
+            
+            // Test 3: Try to load Aera directly
+            console.log('🔄 Testing direct Aera loading:');
+            fetch('Aera.geojson')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('✅ Aera.geojson loaded successfully');
+                    console.log('  - Feature count:', data.features?.length || 0);
+                    if (data.features && data.features.length > 0) {
+                        console.log('  - Sample properties:', Object.keys(data.features[0].properties || {}));
+                        console.log('  - First 5 property names:', Object.keys(data.features[0].properties || {}).slice(0, 5));
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Failed to load Aera.geojson:', error);
+                });
+        }
+        
+        function refreshFilterDropdown() {
+            console.log('🔄 Manually refreshing filter dropdown...');
+            populateFilterLayers();
+            setTimeout(() => {
+                ensureAeraInFilterDropdown();
+            }, 100);
+        }
+        
+        // Test function to manually populate filter fields - FIXED FOR CORRECT AERA LAYER
+        function testFilterFieldPopulation() {
+            console.log('🧪 Testing filter field population...');
+            
+            // ALWAYS use Aera.geojson directly - bypass layer system completely
+            console.log('🔄 Loading Aera.geojson directly for testing...');
+            
+            const fieldSelect = document.getElementById('filterFieldSelect');
+            if (!fieldSelect) {
+                console.error('❌ filterFieldSelect element not found');
+                return;
+            }
+            
+            // Load Aera.geojson directly
+            fetch('Aera.geojson')
+                .then(response => response.json())
+                .then(geoJsonData => {
+                    console.log('✅ Aera.geojson loaded for testing');
+                    console.log('📊 Feature count:', geoJsonData.features?.length);
+                    
+                    if (geoJsonData.features && geoJsonData.features.length > 0) {
+                        const properties = geoJsonData.features[0].properties;
+                        const fieldNames = Object.keys(properties);
+                        console.log('📋 Available fields:', fieldNames);
+                        
+                        // Clear and populate dropdown directly
+                        fieldSelect.innerHTML = '<option value="">Choose a field to filter by</option>';
+                        
+                        fieldNames.forEach(fieldName => {
+                            const option = document.createElement('option');
+                            option.value = fieldName;
+                            option.textContent = fieldName;
+                            fieldSelect.appendChild(option);
+                            console.log(`✅ Added test option: ${fieldName}`);
+                        });
+                        
+                        console.log(`🎯 Test completed: ${fieldNames.length} fields added to dropdown`);
+                        console.log('� Final dropdown options count:', fieldSelect.options.length);
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Test failed to load Aera.geojson:', error);
+                });
+        }
+        
+        // Make test functions available globally
+        window.testFilterFieldPopulation = testFilterFieldPopulation;
+        window.testAeraFilterAccess = testAeraFilterAccess;
+        window.refreshFilterDropdown = refreshFilterDropdown;
+        
+        // NEW: Direct Aera field population function that bypasses layer system
+        window.populateAeraFieldsDirect = function() {
+            console.log('🎯 DIRECT Aera field population - bypassing layer system completely');
+            
+            const fieldSelect = document.getElementById('filterFieldSelect');
+            if (!fieldSelect) {
+                console.error('❌ filterFieldSelect element not found');
+                return;
+            }
+            
+            fieldSelect.innerHTML = '<option value="">Loading Aera fields...</option>';
+            
+            fetch('Aera.geojson')
+                .then(response => response.json())
+                .then(geoJsonData => {
+                    console.log('✅ Aera.geojson loaded directly');
+                    
+                    if (!geoJsonData.features || geoJsonData.features.length === 0) {
+                        throw new Error('No features found');
+                    }
+                    
+                    const properties = geoJsonData.features[0].properties;
+                    const fieldNames = Object.keys(properties);
+                    
+                    console.log('📋 Fields found:', fieldNames);
+                    
+                    // Clear dropdown and add default
+                    fieldSelect.innerHTML = '<option value="">Choose a field to filter by</option>';
+                    
+                    // Add each field
+                    fieldNames.forEach(fieldName => {
+                        const option = document.createElement('option');
+                        option.value = fieldName;
+                        option.textContent = fieldName;
+                        fieldSelect.appendChild(option);
+                    });
+                    
+                    console.log(`✅ SUCCESS: ${fieldNames.length} fields added to dropdown`);
+                    console.log('🔍 Dropdown now has', fieldSelect.options.length, 'options');
+                    
+                    // Store data for filtering
+                    window.aeraFilterData = geoJsonData;
+                    
+                    // Show the field section
+                    document.getElementById('filterFieldSection').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('❌ Failed to load Aera fields:', error);
+                    fieldSelect.innerHTML = '<option value="">Failed to load</option>';
+                });
+        };
+        
+        // Debug function to test filter system
+        function debugFilterSystem() {
+            console.log('=== FILTER SYSTEM DEBUG ===');
+            console.log('Total layers:', layers.size);
+            console.log('Layers map:', layers);
+            
+            const filterLayerSelect = document.getElementById('filterLayerSelect');
+            const filterFieldSelect = document.getElementById('filterFieldSelect');
+            
+            console.log('Filter layer select element:', filterLayerSelect);
+            console.log('Filter layer select options:', filterLayerSelect ? filterLayerSelect.options.length : 'N/A');
+            console.log('Filter field select element:', filterFieldSelect);
+            
+            console.log('Current filter state:', currentFilterState);
+            console.log('=== END DEBUG ===');
+        }
+        
+        // Make debug function available globally (for console testing)
+        window.debugFilterSystem = debugFilterSystem;
+        
+        // Test filter system function 
+        window.testFilterSystem = function() {
+            console.log('Testing filter system...');
+            debugFilterSystem();
+            
+            // Force populate filter layers
+            populateFilterLayers();
+            
+            // Test layer selection  
+            const filterLayerSelect = document.getElementById('filterLayerSelect');
+            if (filterLayerSelect && filterLayerSelect.options.length > 1) {
+                console.log('SUCCESS: Filter layers are available');
+                
+                // Test field population by simulating layer selection
+                const firstLayerOption = filterLayerSelect.options[1]; // Skip "Choose a layer"
+                if (firstLayerOption) {
+                    console.log('Testing field population for layer:', firstLayerOption.text);
+                    filterLayerSelect.value = firstLayerOption.value;
+                    handleFilterLayerChange();
+                    
+                    setTimeout(() => {
+                        const filterFieldSelect = document.getElementById('filterFieldSelect');
+                        if (filterFieldSelect && filterFieldSelect.options.length > 1) {
+                            console.log('SUCCESS: Filter fields populated successfully!');
+                            console.log(`Found ${filterFieldSelect.options.length - 1} fields:`, 
+                                Array.from(filterFieldSelect.options).slice(1).map(opt => opt.text));
+                        } else {
+                            console.log('ISSUE: Filter fields not populated');
+                        }
+                    }, 100);
+                }
+            } else {
+                console.log('ISSUE: No filter layers available');
+            }
+        };
+        
+        // Auto-test after layers load
+        setTimeout(() => {
+            console.log('Running automatic filter system test...');
+            window.testFilterSystem();
+        }, 2000);
 
         // Legacy filter functions (keeping for compatibility but they won't be used)
         function setupFilterListeners() {
@@ -4502,82 +5441,913 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
         }
 
         // Setup print listeners
+        // Setup print layout editor
         function setupPrintListeners() {
-            document.getElementById('cancelPrint').addEventListener('click', () => {
-                document.getElementById('printModal').classList.add('hidden');
-            });
-
-            document.getElementById('exportMap').addEventListener('click', exportMap);
+            // Canvas size change handler
+            document.getElementById('canvasSize').addEventListener('change', handleCanvasSizeChange);
+            document.getElementById('customWidth').addEventListener('input', handleCustomSizeChange);
+            document.getElementById('customHeight').addEventListener('input', handleCustomSizeChange);
+            
+            // Export button
+            document.getElementById('exportLayoutBtn').addEventListener('click', exportLayoutAsImage);
+            
+            // Initialize layout editor when modal opens
+            document.getElementById('printBtn').addEventListener('click', initializePrintLayout);
         }
 
-        // Export map
-        function exportMap() {
-            const title = document.getElementById('mapTitle').value;
-            const pageSize = document.getElementById('pageSize').value;
-            const orientation = document.getElementById('orientation').value;
-            const includeLegend = document.getElementById('includeLegend').checked;
+        // Initialize print layout editor
+        function initializePrintLayout() {
+            console.log('🖨️ Initializing print layout editor...');
+            
+            // Set initial canvas size
+            handleCanvasSizeChange();
+            
+            // Initialize map frame interactions
+            initializeMapFrameInteractions();
+            
+            // Create print map instance with delay to ensure proper setup
+            setTimeout(() => {
+                createPrintMapInstance();
+            }, 100);
+        }
 
-            // Get dimensions
-            const [width, height] = pageSize.split('x').map(Number);
-            const finalWidth = orientation === 'portrait' ? Math.min(width, height) : Math.max(width, height);
-            const finalHeight = orientation === 'portrait' ? Math.max(width, height) : Math.min(width, height);
+        // Handle canvas size changes
+        function handleCanvasSizeChange() {
+            const canvasSizeSelect = document.getElementById('canvasSize');
+            const customInputs = document.getElementById('customSizeInputs');
+            const canvas = document.getElementById('printCanvas');
+            const mapFrame = document.getElementById('mapFrame');
+            
+            let width, height;
+            
+            if (canvasSizeSelect.value === 'custom') {
+                customInputs.classList.remove('hidden');
+                width = parseInt(document.getElementById('customWidth').value) || 1980;
+                height = parseInt(document.getElementById('customHeight').value) || 1080;
+            } else {
+                customInputs.classList.add('hidden');
+                [width, height] = canvasSizeSelect.value.split('x').map(Number);
+            }
+            
+            // Scale down for display (max 1200px wide)
+            const maxDisplayWidth = 1200;
+            const scale = Math.min(1, maxDisplayWidth / width);
+            const displayWidth = width * scale;
+            const displayHeight = height * scale;
+            
+            canvas.style.width = displayWidth + 'px';
+            canvas.style.height = displayHeight + 'px';
+            canvas.setAttribute('data-actual-width', width);
+            canvas.setAttribute('data-actual-height', height);
+            canvas.setAttribute('data-scale', scale);
+            
+            // **NEW: Auto-fit map frame to canvas dimensions**
+            if (mapFrame) {
+                // Set map frame to exactly match canvas size (scaled for display)
+                mapFrame.style.width = displayWidth + 'px';
+                mapFrame.style.height = displayHeight + 'px';
+                mapFrame.style.position = 'absolute';
+                mapFrame.style.top = '0px';
+                mapFrame.style.left = '0px';
+                mapFrame.style.resize = 'none';
+                mapFrame.style.pointerEvents = 'auto'; // Allow map interaction but disable dragging/resizing
+                
+                // Update print map size if it exists
+                if (window.printMap) {
+                    setTimeout(() => {
+                        window.printMap.invalidateSize();
+                    }, 100);
+                }
+                
+                console.log(`🗺️ Map frame auto-fitted to canvas: ${displayWidth}×${displayHeight}px`);
+            }
+            
+            console.log(`📐 Canvas size set to: ${width}×${height}px (display: ${displayWidth}×${displayHeight}px, scale: ${scale})`);
+        }
 
-            // Create a temporary container for export
-            const exportContainer = document.createElement('div');
-            exportContainer.style.width = finalWidth + 'px';
-            exportContainer.style.height = finalHeight + 'px';
-            exportContainer.style.position = 'absolute';
-            exportContainer.style.top = '-9999px';
-            exportContainer.style.background = '#1f2937';
-            document.body.appendChild(exportContainer);
+        // Handle custom size input changes
+        function handleCustomSizeChange() {
+            if (document.getElementById('canvasSize').value === 'custom') {
+                handleCanvasSizeChange();
+            }
+        }
 
-            // Create export map
-            const exportMap = L.map(exportContainer, {
+        // Initialize map frame interactions (DISABLED - Frame is now locked to canvas size)
+        function initializeMapFrameInteractions() {
+            const mapFrame = document.getElementById('mapFrame');
+            
+            console.log('🔒 Map frame dragging and resizing disabled - frame auto-fits canvas size');
+            
+            // Remove any existing resize handles
+            const existingHandles = mapFrame.querySelectorAll('.resize-handle');
+            existingHandles.forEach(handle => handle.remove());
+            
+            // Ensure map frame is properly positioned and styled
+            mapFrame.style.position = 'absolute';
+            mapFrame.style.top = '0px';
+            mapFrame.style.left = '0px';
+            mapFrame.style.cursor = 'default';
+            mapFrame.style.userSelect = 'none';
+            
+            // Allow map interactions but prevent frame manipulation
+            mapFrame.addEventListener('mousedown', function(e) {
+                // Only allow interaction with the print map container itself
+                const printMapContainer = document.getElementById('printMapContainer');
+                if (e.target === printMapContainer || printMapContainer.contains(e.target)) {
+                    // Allow normal map interaction (panning, zooming, etc.)
+                    return;
+                }
+                
+                // Prevent any frame manipulation
+                e.preventDefault();
+                e.stopPropagation();
+            });
+            
+            // Remove any drag/resize cursor styles
+            mapFrame.style.resize = 'none';
+            mapFrame.classList.remove('resizing', 'dragging', 'active');
+            
+            console.log('🗺️ Map frame locked to canvas - only map interaction allowed');
+        }
+
+        // Initialize map frame resize functionality (DISABLED - Frame auto-fits canvas)
+        function initializeMapFrameResize() {
+            console.log('🔒 Map frame resizing disabled - frame automatically matches canvas size');
+            
+            // Remove any existing resize handles to prevent manual resizing
+            const mapFrame = document.getElementById('mapFrame');
+            if (mapFrame) {
+                const existingHandles = mapFrame.querySelectorAll('.resize-handle');
+                existingHandles.forEach(handle => {
+                    handle.remove();
+                    console.log('🗑️ Removed resize handle:', handle.className);
+                });
+                
+                // Ensure no resize functionality is applied
+                mapFrame.style.resize = 'none';
+                mapFrame.classList.remove('resizing', 'dragging');
+                
+                console.log('✅ All resize handles removed and resize functionality disabled');
+            }
+        }
+
+        // Create print map instance
+        function createPrintMapInstance() {
+            const mapContainer = document.getElementById('printMapContainer');
+            
+            // Clear existing content
+            mapContainer.innerHTML = '';
+            
+            // Create new Leaflet map instance
+            window.printMap = L.map(mapContainer, {
                 center: map.getCenter(),
                 zoom: map.getZoom(),
                 zoomControl: false,
-                attributionControl: false
+                attributionControl: false,
+                scrollWheelZoom: true,
+                dragging: true,
+                doubleClickZoom: true
             });
-
-            // Add base layer
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(exportMap);
-
-            // Add visible layers
-            layers.forEach(layerInfo => {
-                if (layerInfo.visible) {
-                    L.geoJSON(layerInfo.data, {
-                        style: layerInfo.style
-                    }).addTo(exportMap);
+            
+            // Add the same base layer as main map
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Esri, Maxar, Earthstar Geographics'
+            }).addTo(window.printMap);
+            
+            console.log('🗺️ Creating print map with layers:', layers.size);
+            
+            // Add all visible layers from main map with exact same styling and order
+            // Process layers in the correct order (reverse layerOrder for proper z-index)
+            const layersToAdd = [];
+            
+            layerOrder.forEach((layerId) => {
+                const layerInfo = layers.get(layerId);
+                if (layerInfo && layerInfo.visible && layerInfo.data) {
+                    layersToAdd.push({ layerId, layerInfo });
                 }
             });
-
-            // Wait for tiles to load then capture
-            setTimeout(() => {
-                html2canvas(exportContainer, {
-                    width: finalWidth,
-                    height: finalHeight,
-                    useCORS: true,
-                    allowTaint: true
-                }).then(canvas => {
-                    // Create download link
-                    const link = document.createElement('a');
-                    link.download = `${title.replace(/[^a-z0-9]/gi, '_')}.png`;
-                    link.href = canvas.toDataURL();
-                    link.click();
-
-                    // Cleanup
-                    exportMap.remove();
-                    document.body.removeChild(exportContainer);
-                    document.getElementById('printModal').classList.add('hidden');
-                }).catch(error => {
-                    console.error('Export failed:', error);
-                    alert('Export failed. Please try again.');
+            
+            // Add layers to print map
+            layersToAdd.forEach(({ layerId, layerInfo }) => {
+                try {
+                    console.log(`📍 Adding layer to print map: "${layerInfo.name}" (ID: ${layerId})`);
+                    console.log(`🎨 Layer classification:`, layerInfo.classification);
+                    console.log(`🎨 Layer style:`, layerInfo.style);
                     
-                    // Cleanup
-                    exportMap.remove();
-                    document.body.removeChild(exportContainer);
+                    let styleFunction;
+                    
+                    // **NEW: Handle categorical symbology with proper dynamic styling**
+                    if (layerInfo.classification && layerInfo.classification.field) {
+                        // Use categorical styling - replicate the exact logic from main map
+                        const { field, colorMap, strokeColor, strokeWidth } = layerInfo.classification;
+                        
+                        console.log(`🎨 Applying categorical styling for field "${field}" with color map:`, colorMap);
+                        
+                        styleFunction = function(feature) {
+                            const value = feature.properties[field];
+                            const fillColor = colorMap[value] || '#999999';
+                            return {
+                                color: strokeColor || '#ffffff',
+                                fillColor: fillColor,
+                                weight: strokeWidth || 2,
+                                opacity: 1.0,
+                                fillOpacity: 0.7
+                            };
+                        };
+                        
+                        console.log(`✅ Using categorical style function for "${layerInfo.name}"`);
+                        
+                    } else if (layerInfo.style && typeof layerInfo.style === 'object') {
+                        // Use static styling for simple layers
+                        styleFunction = function(feature) {
+                            return layerInfo.style;
+                        };
+                        
+                        console.log(`✅ Using static style for "${layerInfo.name}":`, layerInfo.style);
+                        
+                    } else {
+                        // Fallback default styling
+                        styleFunction = function(feature) {
+                            return {
+                                color: '#3388ff',
+                                weight: 2,
+                                opacity: 0.8,
+                                fillColor: '#3388ff',
+                                fillOpacity: 0.4
+                            };
+                        };
+                        
+                        console.log(`⚠️ Using fallback default style for "${layerInfo.name}"`);
+                    }
+                    
+                    // Create the print layer with the appropriate style function
+                    const printLayer = L.geoJSON(layerInfo.data, {
+                        style: styleFunction,
+                        onEachFeature: function(feature, layer) {
+                            // No popups in print map to avoid rendering issues
+                        }
+                    }).addTo(window.printMap);
+                    
+                    console.log(`✅ Successfully added "${layerInfo.name}" to print map with live styling`);
+                    
+                } catch (error) {
+                    console.error(`❌ Failed to add layer "${layerInfo.name}" to print map:`, error);
+                }
+            });
+            
+            console.log(`🗺️ Print map instance created with ${layersToAdd.length} visible layers`);
+            
+            // Wait for map to fully render before allowing interactions
+            setTimeout(() => {
+                if (window.printMap) {
+                    window.printMap.invalidateSize();
+                }
+            }, 500);
+        }
+
+        // Export layout as image with proper vector layer support
+        async function exportLayoutAsImage() {
+            console.log('📤 Starting enhanced layout export with vector layer support...');
+            
+            const canvas = document.getElementById('printCanvas');
+            const mapFrame = document.getElementById('mapFrame');
+            const exportBtn = document.getElementById('exportLayoutBtn');
+            const title = document.getElementById('layoutTitle').value || 'Aera_Map_Layout';
+            
+            // Show loading state
+            exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Exporting...</span>';
+            exportBtn.disabled = true;
+            
+            try {
+                // Ensure print map is ready
+                if (!window.printMap) {
+                    console.log('🔄 Print map not ready, creating...');
+                    createPrintMapInstance();
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+                
+                // Force map invalidation and wait for rendering
+                window.printMap.invalidateSize();
+                await waitForMapToLoad(window.printMap);
+                
+                // Additional rendering cycle to ensure all layers are drawn
+                await new Promise(resolve => {
+                    window.printMap.once('moveend', () => {
+                        setTimeout(resolve, 1000); // Extra time for vector layer rendering
+                    });
+                    window.printMap.setView(window.printMap.getCenter(), window.printMap.getZoom());
                 });
+                
+                // Get dimensions and positioning
+                const frameRect = mapFrame.getBoundingClientRect();
+                const canvasRect = canvas.getBoundingClientRect();
+                
+                const frameLeft = frameRect.left - canvasRect.left;
+                const frameTop = frameRect.top - canvasRect.top;
+                const frameWidth = frameRect.width;
+                const frameHeight = frameRect.height;
+                
+                // Get scale factors for high-resolution export
+                const actualCanvasWidth = parseInt(canvas.getAttribute('data-actual-width')) || 1980;
+                const actualCanvasHeight = parseInt(canvas.getAttribute('data-actual-height')) || 1080;
+                const displayWidth = canvasRect.width;
+                const displayHeight = canvasRect.height;
+                const scaleX = actualCanvasWidth / displayWidth;
+                const scaleY = actualCanvasHeight / displayHeight;
+                
+                console.log('📐 Export configuration:', {
+                    actualCanvas: `${actualCanvasWidth}×${actualCanvasHeight}`,
+                    displayCanvas: `${displayWidth}×${displayHeight}`,
+                    scale: `${scaleX}×${scaleY}`,
+                    frame: `${frameWidth}×${frameHeight} at ${frameLeft},${frameTop}`
+                });
+                
+                // Create high-resolution export canvas
+                const exportCanvas = document.createElement('canvas');
+                exportCanvas.width = actualCanvasWidth;
+                exportCanvas.height = actualCanvasHeight;
+                const ctx = exportCanvas.getContext('2d');
+                
+                // Fill with white background
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, actualCanvasWidth, actualCanvasHeight);
+                
+                // Add title if present
+                const titleValue = document.getElementById('layoutTitle').value;
+                if (titleValue && titleValue.trim()) {
+                    ctx.fillStyle = '#1f2937';
+                    ctx.font = `bold ${Math.round(24 * scaleX)}px Inter, Arial, sans-serif`;
+                    ctx.textAlign = 'left';
+                    ctx.fillText(titleValue.trim(), Math.round(16 * scaleX), Math.round(40 * scaleY));
+                }
+                
+                // Method 1: Try custom canvas rendering first (most reliable for vector layers)
+                console.log('🎨 Using custom canvas rendering for vector layers...');
+                
+                // Create a temporary canvas for map content
+                const mapCanvas = document.createElement('canvas');
+                mapCanvas.width = frameWidth;
+                mapCanvas.height = frameHeight;
+                const mapCtx = mapCanvas.getContext('2d');
+                
+                // Render basemap tiles first
+                await renderBasemapToCanvas(mapCtx, window.printMap, frameWidth, frameHeight);
+                
+                // Render vector layers on top
+                await renderVectorLayersToCanvas(mapCtx, window.printMap, frameWidth, frameHeight);
+                
+                // Draw the completed map canvas onto the export canvas
+                const scaledFrameLeft = Math.round(frameLeft * scaleX);
+                const scaledFrameTop = Math.round(frameTop * scaleY);
+                const scaledFrameWidth = Math.round(frameWidth * scaleX);
+                const scaledFrameHeight = Math.round(frameHeight * scaleY);
+                
+                ctx.drawImage(mapCanvas, scaledFrameLeft, scaledFrameTop, scaledFrameWidth, scaledFrameHeight);
+                
+                console.log('🗺️ Map rendered with custom canvas approach');
+                
+                // Create and download the image
+                const link = document.createElement('a');
+                link.download = `${title.replace(/[^a-z0-9]/gi, '_')}.png`;
+                link.href = exportCanvas.toDataURL('image/png', 1.0);
+                link.click();
+                
+                console.log('✅ Layout exported successfully with vector layers');
+                
+                // Show success message
+                exportBtn.innerHTML = '<i class="fas fa-check"></i> <span>Exported!</span>';
+                setTimeout(() => {
+                    exportBtn.innerHTML = '<i class="fas fa-download"></i> <span>Export Layout</span>';
+                    exportBtn.disabled = false;
+                }, 2000);
+                
+            } catch (error) {
+                console.error('❌ Export failed:', error);
+                
+                // Fallback to html2canvas method
+                console.log('🔄 Falling back to html2canvas method...');
+                try {
+                    await fallbackHtml2CanvasExport(canvas, mapFrame, title, exportBtn);
+                } catch (fallbackError) {
+                    console.error('❌ Fallback export also failed:', fallbackError);
+                    alert('Export failed. Please try again or refresh the page.');
+                    
+                    exportBtn.innerHTML = '<i class="fas fa-download"></i> <span>Export Layout</span>';
+                    exportBtn.disabled = false;
+                }
+            }
+        }
+        
+        // Render basemap tiles to canvas
+        async function renderBasemapToCanvas(ctx, mapInstance, width, height) {
+            return new Promise((resolve) => {
+                console.log('🌍 Rendering basemap tiles...');
+                
+                // Find the tile layer
+                let tileLayer = null;
+                mapInstance.eachLayer(layer => {
+                    if (layer._url && layer._url.includes('arcgisonline')) {
+                        tileLayer = layer;
+                    }
+                });
+                
+                if (!tileLayer) {
+                    console.warn('No tile layer found');
+                    resolve();
+                    return;
+                }
+                
+                const bounds = mapInstance.getBounds();
+                const zoom = mapInstance.getZoom();
+                const mapSize = mapInstance.getSize();
+                
+                // Get tile grid info
+                const tileSize = tileLayer.getTileSize();
+                const pixelBounds = mapInstance.getPixelBounds();
+                const tileRange = mapInstance._tileLayerTileBounds;
+                
+                let tilesLoaded = 0;
+                let totalTiles = 0;
+                
+                // Count tiles in view
+                if (tileLayer._tiles) {
+                    totalTiles = Object.keys(tileLayer._tiles).length;
+                }
+                
+                if (totalTiles === 0) {
+                    console.log('No tiles to render');
+                    resolve();
+                    return;
+                }
+                
+                function tileComplete() {
+                    tilesLoaded++;
+                    if (tilesLoaded >= totalTiles) {
+                        console.log(`✅ Rendered ${tilesLoaded} basemap tiles`);
+                        resolve();
+                    }
+                }
+                
+                // Render each visible tile
+                Object.values(tileLayer._tiles).forEach(tile => {
+                    if (tile.el && tile.el.complete) {
+                        try {
+                            // Calculate tile position relative to map container
+                            const tilePoint = mapInstance.latLngToContainerPoint(
+                                mapInstance.unproject(mapInstance.project(bounds.getNorthWest()).subtract([tile.coords.x * tileSize.x, tile.coords.y * tileSize.y]))
+                            );
+                            
+                            ctx.drawImage(
+                                tile.el,
+                                Math.round(tilePoint.x),
+                                Math.round(tilePoint.y),
+                                tileSize.x,
+                                tileSize.y
+                            );
+                        } catch (error) {
+                            console.warn('Tile render error:', error);
+                        }
+                    }
+                    tileComplete();
+                });
+            });
+        }
+        
+        // Render vector layers to canvas
+        async function renderVectorLayersToCanvas(ctx, mapInstance, width, height) {
+            return new Promise((resolve) => {
+                console.log('🎨 Rendering vector layers...');
+                
+                let vectorLayersProcessed = 0;
+                let totalVectorLayers = 0;
+                
+                // Count vector layers
+                mapInstance.eachLayer(layer => {
+                    if (layer.feature || (layer._layers && Object.keys(layer._layers).length > 0)) {
+                        totalVectorLayers++;
+                    }
+                });
+                
+                if (totalVectorLayers === 0) {
+                    console.log('No vector layers to render');
+                    resolve();
+                    return;
+                }
+                
+                function vectorLayerComplete() {
+                    vectorLayersProcessed++;
+                    if (vectorLayersProcessed >= totalVectorLayers) {
+                        console.log(`✅ Rendered ${vectorLayersProcessed} vector layers`);
+                        resolve();
+                    }
+                }
+                
+                // Process each vector layer
+                mapInstance.eachLayer(layer => {
+                    if (layer.feature || (layer._layers && Object.keys(layer._layers).length > 0)) {
+                        try {
+                            renderVectorLayerFeatures(ctx, layer, mapInstance);
+                        } catch (error) {
+                            console.warn('Vector layer render error:', error);
+                        }
+                        vectorLayerComplete();
+                    }
+                });
+            });
+        }
+        
+        // Render features of a vector layer
+        function renderVectorLayerFeatures(ctx, layer, mapInstance) {
+            const features = [];
+            
+            // Collect all features
+            if (layer._layers) {
+                Object.values(layer._layers).forEach(sublayer => {
+                    if (sublayer.feature) {
+                        features.push({
+                            feature: sublayer.feature,
+                            options: sublayer.options || {}
+                        });
+                    }
+                });
+            } else if (layer.feature) {
+                features.push({
+                    feature: layer.feature,
+                    options: layer.options || {}
+                });
+            }
+            
+            console.log(`🔍 Rendering ${features.length} features from vector layer`);
+            
+            // Draw each feature
+            features.forEach(({ feature, options }) => {
+                drawFeatureOnCanvas(feature, options, ctx, mapInstance);
+            });
+        }
+        
+        // Draw individual feature on canvas
+        function drawFeatureOnCanvas(feature, options, ctx, mapInstance) {
+            try {
+                const geom = feature.geometry;
+                
+                // Set drawing style
+                const fillColor = options.fillColor || options.color || '#3388ff';
+                const strokeColor = options.color || '#3388ff';
+                const fillOpacity = options.fillOpacity !== undefined ? options.fillOpacity : 0.2;
+                const strokeOpacity = options.opacity !== undefined ? options.opacity : 1.0;
+                const strokeWidth = options.weight || 3;
+                
+                // Configure context
+                ctx.fillStyle = hexToRgba(fillColor, fillOpacity);
+                ctx.strokeStyle = hexToRgba(strokeColor, strokeOpacity);
+                ctx.lineWidth = strokeWidth;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                
+                // Draw based on geometry type
+                if (geom.type === 'Polygon') {
+                    drawPolygonOnCanvas(geom.coordinates, ctx, mapInstance);
+                } else if (geom.type === 'MultiPolygon') {
+                    geom.coordinates.forEach(polygon => {
+                        drawPolygonOnCanvas(polygon, ctx, mapInstance);
+                    });
+                } else if (geom.type === 'LineString') {
+                    drawLineStringOnCanvas(geom.coordinates, ctx, mapInstance);
+                } else if (geom.type === 'MultiLineString') {
+                    geom.coordinates.forEach(line => {
+                        drawLineStringOnCanvas(line, ctx, mapInstance);
+                    });
+                } else if (geom.type === 'Point') {
+                    drawPointOnCanvas(geom.coordinates, ctx, mapInstance, strokeWidth);
+                } else if (geom.type === 'MultiPoint') {
+                    geom.coordinates.forEach(point => {
+                        drawPointOnCanvas(point, ctx, mapInstance, strokeWidth);
+                    });
+                }
+                
+            } catch (error) {
+                console.warn('Feature drawing error:', error);
+            }
+        }
+        
+        // Convert hex color to rgba
+        function hexToRgba(hex, alpha = 1) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            if (result) {
+                const r = parseInt(result[1], 16);
+                const g = parseInt(result[2], 16);
+                const b = parseInt(result[3], 16);
+                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            }
+            return hex;
+        }
+        
+        // Draw polygon on canvas
+        function drawPolygonOnCanvas(coordinates, ctx, mapInstance) {
+            coordinates.forEach((ring, ringIndex) => {
+                ctx.beginPath();
+                
+                ring.forEach((coord, index) => {
+                    const point = mapInstance.latLngToContainerPoint([coord[1], coord[0]]);
+                    if (index === 0) {
+                        ctx.moveTo(point.x, point.y);
+                    } else {
+                        ctx.lineTo(point.x, point.y);
+                    }
+                });
+                
+                ctx.closePath();
+                
+                if (ringIndex === 0) {
+                    // Fill and stroke the main polygon
+                    ctx.fill();
+                    ctx.stroke();
+                } else {
+                    // For holes, just stroke
+                    ctx.stroke();
+                }
+            });
+        }
+        
+        // Draw line string on canvas
+        function drawLineStringOnCanvas(coordinates, ctx, mapInstance) {
+            if (coordinates.length < 2) return;
+            
+            ctx.beginPath();
+            
+            coordinates.forEach((coord, index) => {
+                const point = mapInstance.latLngToContainerPoint([coord[1], coord[0]]);
+                if (index === 0) {
+                    ctx.moveTo(point.x, point.y);
+                } else {
+                    ctx.lineTo(point.x, point.y);
+                }
+            });
+            
+            ctx.stroke();
+        }
+        
+        // Draw point on canvas
+        function drawPointOnCanvas(coordinates, ctx, mapInstance, radius = 5) {
+            const point = mapInstance.latLngToContainerPoint([coordinates[1], coordinates[0]]);
+            
+            ctx.beginPath();
+            ctx.arc(point.x, point.y, radius, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.stroke();
+        }
+        
+        // Fallback html2canvas export method
+        async function fallbackHtml2CanvasExport(canvas, mapFrame, title, exportBtn) {
+            console.log('🔄 Using fallback html2canvas method...');
+            
+            const printMapContainer = document.getElementById('printMapContainer');
+            
+            // Step 1: Force multiple render cycles to ensure proper alignment
+            for (let i = 0; i < 2; i++) {
+                await new Promise(resolve => {
+                    window.printMap.once('moveend', resolve);
+                    window.printMap.setView(window.printMap.getCenter(), window.printMap.getZoom());
+                });
+                console.log(`🔄 Completed render cycle ${i+1}/2`);
+            }
+            
+            // Step 2: Make sure map is at full size with complete redraw
+            window.printMap.invalidateSize({animate: false, pan: false, debounceMoveend: true});
+            
+            // Step 3: Trigger redraw for all vector layers specifically to fix alignment
+            let vectorLayerCount = 0;
+            window.printMap.eachLayer(layer => {
+                // Check if this is a vector layer (GeoJSON)
+                if (layer.feature || (layer._layers && !layer._url)) {
+                    vectorLayerCount++;
+                    // Force redraw by toggling visibility
+                    if (layer.bringToFront) {
+                        layer.bringToFront();
+                    }
+                    // For multipolygons/complex features, need to redraw individual parts
+                    if (layer._layers) {
+                        Object.values(layer._layers).forEach(sublayer => {
+                            if (sublayer.bringToFront) {
+                                sublayer.bringToFront();
+                            }
+                        });
+                    }
+                }
+            });
+            console.log(`🔄 Triggered redraw for ${vectorLayerCount} vector layers`);
+            
+            // Step 4: Wait for map to finish loading completely with enhanced stability checks
+            await new Promise(resolve => {
+                // First wait for the basic map ready state
+                window.printMap.whenReady(async () => {
+                    console.log('📍 Map base ready, checking tile and vector completeness...');
+                    
+                    // Enhanced tile check function
+                    const checkTiles = () => {
+                        // Get current tiles and check their load state
+                        const tiles = window.printMap._tiles || {};
+                        const loadingTiles = Object.values(tiles).filter(t => t && !t.loaded && !t.complete);
+                        
+                        if (loadingTiles.length === 0) {
+                            console.log('✅ All map tiles loaded successfully');
+                            return true;
+                        }
+                        console.log(`⏳ Still waiting for ${loadingTiles.length} tiles to load`);
+                        return false;
+                    };
+                    
+                    // Wait for tiles in a loop with timeout safety
+                    let attempts = 0;
+                    while (!checkTiles() && attempts < 30) { // Increased max attempts
+                        await new Promise(r => setTimeout(r, 200));
+                        attempts++;
+                    }
+                    
+                    // Force additional redraw specifically for vector layers
+                    window.printMap.invalidateSize({animate: false, pan: false});
+                    
+                    // Additional check to ensure vector layers are properly positioned
+                    window.printMap.eachLayer(layer => {
+                        if (layer.feature || (layer._layers && !layer._url)) {
+                            if (layer.bringToFront) {
+                                layer.bringToFront();
+                            }
+                        }
+                    });
+                    
+                    // Critical: Extended wait for DOM update and vector alignment
+                    // Increased from 800ms to 2000ms as suggested
+                    console.log('⏳ Extended wait for vector layer stabilization (2000ms)...');
+                    await new Promise(r => setTimeout(r, 2000));
+                    
+                    console.log('🔄 Final map rendering stabilized after', attempts, 'attempts');
+                    resolve();
+                });
+            });
+
+            // Capture with enhanced settings
+            const mapCanvas = await html2canvas(printMapContainer, {
+                backgroundColor: null,
+                scale: 2, // Higher scale for better quality
+                useCORS: true,
+                allowTaint: false,
+                logging: true, // Enable logging for debugging
+                foreignObjectRendering: true, // Try to use foreignObject for better SVG rendering
+                removeContainer: false, // Keep the container for better element structure
+                ignoreElements: (element) => {
+                    // Only ignore attribution and zoom controls, keep all vector elements
+                    return element.classList.contains('leaflet-control-attribution') ||
+                           (element.classList.contains('leaflet-control') && 
+                            !element.classList.contains('leaflet-overlay-pane'));
+                },
+                onclone: function(clonedDoc) {
+                    const clonedContainer = clonedDoc.getElementById('printMapContainer');
+                    if (clonedContainer) {
+                        // Ensure the cloned container is fully visible
+                        clonedContainer.style.visibility = 'visible';
+                        clonedContainer.style.opacity = '1';
+                        clonedContainer.style.transform = 'none';
+                        clonedContainer.style.width = printMapContainer.offsetWidth + 'px';
+                        clonedContainer.style.height = printMapContainer.offsetHeight + 'px';
+                        
+                        // Ensure all vector elements are visible in the clone
+                        const vectorPanes = clonedContainer.querySelectorAll('.leaflet-overlay-pane, .leaflet-pane');
+                        vectorPanes.forEach(pane => {
+                            pane.style.visibility = 'visible';
+                            pane.style.opacity = '1';
+                            pane.style.display = 'block';
+                            // Ensure vectors aren't clipped
+                            pane.style.overflow = 'visible'; 
+                        });
+                    }
+                }
+            });
+            
+            // Create final export - similar to the main method
+            const frameRect = mapFrame.getBoundingClientRect();
+            const canvasRect = canvas.getBoundingClientRect();
+            const frameLeft = frameRect.left - canvasRect.left;
+            const frameTop = frameRect.top - canvasRect.top;
+            const frameWidth = frameRect.width;
+            const frameHeight = frameRect.height;
+            
+            const actualCanvasWidth = parseInt(canvas.getAttribute('data-actual-width')) || 1980;
+            const actualCanvasHeight = parseInt(canvas.getAttribute('data-actual-height')) || 1080;
+            const displayWidth = canvasRect.width;
+            const displayHeight = canvasRect.height;
+            const scaleX = actualCanvasWidth / displayWidth;
+            const scaleY = actualCanvasHeight / displayHeight;
+            
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = actualCanvasWidth;
+            exportCanvas.height = actualCanvasHeight;
+            const ctx = exportCanvas.getContext('2d');
+            
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, actualCanvasWidth, actualCanvasHeight);
+            
+            const titleValue = document.getElementById('layoutTitle').value;
+            if (titleValue && titleValue.trim()) {
+                ctx.fillStyle = '#1f2937';
+                ctx.font = `bold ${Math.round(24 * scaleX)}px Inter, Arial, sans-serif`;
+                ctx.textAlign = 'left';
+                ctx.fillText(titleValue.trim(), Math.round(16 * scaleX), Math.round(40 * scaleY));
+            }
+            
+            const scaledFrameLeft = Math.round(frameLeft * scaleX);
+            const scaledFrameTop = Math.round(frameTop * scaleY);
+            const scaledFrameWidth = Math.round(frameWidth * scaleX);
+            const scaledFrameHeight = Math.round(frameHeight * scaleY);
+            
+            ctx.drawImage(mapCanvas, scaledFrameLeft, scaledFrameTop, scaledFrameWidth, scaledFrameHeight);
+            
+            const link = document.createElement('a');
+            link.download = `${title.replace(/[^a-z0-9]/gi, '_')}.png`;
+            link.href = exportCanvas.toDataURL('image/png', 1.0);
+            link.click();
+            
+            console.log('✅ Fallback export completed');
+            
+            exportBtn.innerHTML = '<i class="fas fa-check"></i> <span>Exported!</span>';
+            setTimeout(() => {
+                exportBtn.innerHTML = '<i class="fas fa-download"></i> <span>Export Layout</span>';
+                exportBtn.disabled = false;
             }, 2000);
+        }
+        
+        // Helper function to wait for map to fully load
+        function waitForMapToLoad(mapInstance) {
+            return new Promise((resolve) => {
+                let tilesLoading = 0;
+                let tilesLoaded = 0;
+                let vectorLayersReady = false;
+                
+                function checkComplete() {
+                    if ((tilesLoading === 0 || tilesLoaded >= tilesLoading) && vectorLayersReady) {
+                        console.log(`🔄 Map fully loaded: ${tilesLoaded}/${tilesLoading} tiles, vectors ready`);
+                        // Increased from 500ms to 2000ms for better vector layer stabilization
+                        setTimeout(resolve, 2000); // Extended delay for final rendering
+                    }
+                }
+                
+                // Track tile loading
+                mapInstance.eachLayer(layer => {
+                    if (layer._url) { // This is a tile layer
+                        layer.on('loading', () => {
+                            tilesLoading++;
+                            console.log(`🔄 Tile loading started: ${tilesLoading} total tiles loading`);
+                        });
+                        layer.on('load', () => {
+                            tilesLoaded++;
+                            console.log(`✅ Tile loaded: ${tilesLoaded}/${tilesLoading}`);
+                            checkComplete();
+                        });
+                        layer.on('tileerror', () => {
+                            tilesLoaded++; // Count errors as complete
+                            console.log(`⚠️ Tile error: ${tilesLoaded}/${tilesLoading}`);
+                            checkComplete();
+                        });
+                    }
+                });
+                
+                // Force redraw of vector layers to fix alignment issues
+                let vectorLayerCount = 0;
+                mapInstance.eachLayer(layer => {
+                    if (layer.feature || (layer._layers && !layer._url)) {
+                        vectorLayerCount++;
+                        // Force redraw by bringing to front
+                        if (layer.bringToFront) {
+                            layer.bringToFront();
+                        }
+                        // For multipolygons/complex features
+                        if (layer._layers) {
+                            Object.values(layer._layers).forEach(sublayer => {
+                                if (sublayer.bringToFront) {
+                                    sublayer.bringToFront();
+                                }
+                            });
+                        }
+                    }
+                });
+                console.log(`🔄 Enhanced ${vectorLayerCount} vector layers for proper rendering`);
+                
+                // Extended wait for vector layers readiness
+                setTimeout(() => {
+                    console.log('🔄 Vector layers stabilization period completed');
+                    vectorLayersReady = true;
+                    checkComplete();
+                }, 1000); // Increased from 200ms to 1000ms
+                
+                // Fallback timeout for reliability
+                setTimeout(() => {
+                    console.log('⏰ Map load timeout reached, resolving anyway');
+                    resolve();
+                }, 6000); // Increased from 4000ms to 6000ms
+                
+                // Initial check in case no tiles are loading
+                setTimeout(checkComplete, 100);
+            });
         }
 
         // Setup symbology listeners (kept for compatibility but not used)
@@ -6685,6 +8455,11 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                 
                 // Trigger real-time statistics update when selection changes
                 calculateAndUpdateStatistics();
+            }
+            
+            // Update Filter Selected button state when selection changes
+            if (typeof updateFilterSelectedButton === 'function') {
+                updateFilterSelectedButton();
             }
             
             // Hide feature list - we only show the count now
