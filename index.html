@@ -5,8 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aera Link</title>
     
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS (Development version) -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // Custom colors for the app
+                    }
+                }
+            }
+        }
+    </script>
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -199,6 +210,161 @@
             backdrop-filter: blur(4px);
         }
         
+        /* Custom Confirmation Modal Styles */
+        .confirm-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(20, 28, 38, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .confirm-modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .confirm-modal {
+            background: rgba(31, 41, 55, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(75, 85, 99, 0.3);
+            border-radius: 1rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            max-width: 360px;
+            width: 90%;
+            padding: 2rem;
+            transform: scale(0.9) translateY(20px);
+            transition: all 0.3s ease;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        .confirm-modal-overlay.show .confirm-modal {
+            transform: scale(1) translateY(0);
+        }
+        
+        .confirm-modal-icon {
+            text-align: center;
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+            line-height: 1;
+        }
+        
+        .confirm-modal-icon.success {
+            color: #10b981;
+        }
+        
+        .confirm-modal-icon.warning {
+            color: #f59e0b;
+        }
+        
+        .confirm-modal-icon.error {
+            color: #ef4444;
+        }
+        
+        .confirm-modal-icon.info {
+            color: #3b82f6;
+        }
+        
+        .confirm-modal-icon.question {
+            color: #14b8a6;
+        }
+        
+        .confirm-modal-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #f9fafb;
+            margin-bottom: 0.75rem;
+            text-align: center;
+        }
+        
+        .confirm-modal-message {
+            color: #d1d5db;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            text-align: center;
+            margin-bottom: 2rem;
+            white-space: pre-line;
+        }
+        
+        .confirm-modal-input-container {
+            margin-bottom: 2rem;
+        }
+        
+        .confirm-modal-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: rgba(55, 65, 81, 0.8);
+            border: 1px solid rgba(75, 85, 99, 0.6);
+            border-radius: 0.5rem;
+            color: white;
+            font-size: 0.875rem;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            transition: all 0.3s ease;
+        }
+        
+        .confirm-modal-input:focus {
+            outline: none;
+            border-color: #14b8a6;
+            box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.2);
+            background: rgba(55, 65, 81, 1);
+        }
+        
+        .confirm-modal-input::placeholder {
+            color: #9ca3af;
+        }
+        
+        .confirm-modal-buttons {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+        }
+        
+        .confirm-modal-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            min-width: 80px;
+        }
+        
+        .confirm-modal-btn-ok {
+            background: linear-gradient(135deg, #14b8a6, #059669);
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(20, 184, 166, 0.3);
+        }
+        
+        .confirm-modal-btn-ok:hover {
+            background: linear-gradient(135deg, #0f766e, #047857);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 8px -1px rgba(20, 184, 166, 0.4);
+        }
+        
+        .confirm-modal-btn-cancel {
+            background: rgba(75, 85, 99, 0.8);
+            color: #d1d5db;
+            border: 1px solid rgba(75, 85, 99, 0.4);
+        }
+        
+        .confirm-modal-btn-cancel:hover {
+            background: rgba(55, 65, 81, 0.9);
+            color: white;
+            transform: translateY(-1px);
+        }
+        
         .progress-bar {
             background: linear-gradient(90deg, #14b8a6 0%, #06b6d4 100%);
         }
@@ -294,6 +460,121 @@
             margin: 4px 0;
         }
 
+        /* Context Menu Submenu Styles */
+        .context-menu-parent {
+            position: relative;
+        }
+
+        .context-menu-arrow {
+            margin-left: auto;
+            margin-right: 0;
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        .context-submenu {
+            position: absolute;
+            left: 100%;
+            top: 0;
+            background: rgba(31, 41, 55, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(75, 85, 99, 0.8);
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            min-width: 200px;
+            max-width: 250px;
+            padding: 4px 0;
+            display: none;
+            z-index: 10001;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .context-menu-parent:hover .context-submenu {
+            display: block;
+        }
+
+        /* Group Header Styles */
+        .context-menu-group-header {
+            padding: 8px 16px 4px 16px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #9ca3af;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid rgba(75, 85, 99, 0.3);
+            margin-bottom: 4px;
+            background: rgba(17, 24, 39, 0.5);
+        }
+
+        /* Satellite Options with Label Toggle */
+        .satellite-option {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 8px 16px;
+        }
+
+        .satellite-option > span {
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+
+        .label-toggle {
+            display: flex;
+            align-items: center;
+            margin-top: 6px;
+            margin-left: 26px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .label-checkbox {
+            margin-right: 6px;
+            cursor: pointer;
+        }
+
+        .label-text {
+            color: #10b981;
+            font-size: 11px;
+        }
+
+        .satellite-option:hover .label-text {
+            color: #34d399;
+        }
+
+        .context-menu-parent:hover .context-submenu {
+            display: block;
+        }
+
+        .basemap-option {
+            white-space: nowrap;
+            font-size: 13px;
+        }
+
+        .basemap-option:hover {
+            background-color: rgba(20, 184, 166, 0.3);
+        }
+
+        /* Scrollbar styling for submenu */
+        .context-submenu::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .context-submenu::-webkit-scrollbar-track {
+            background: rgba(75, 85, 99, 0.3);
+            border-radius: 3px;
+        }
+
+        .context-submenu::-webkit-scrollbar-thumb {
+            background: rgba(20, 184, 166, 0.5);
+            border-radius: 3px;
+        }
+
+        .context-submenu::-webkit-scrollbar-thumb:hover {
+            background: rgba(20, 184, 166, 0.7);
+        }
+
         /* Draggable Symbology Editor Styles */
         .symbology-editor-draggable {
             position: fixed;
@@ -376,22 +657,38 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d30 100%);
+            background-image: url('assets/Home.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 10000;
         }
 
+        #loginContainer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: -1;
+        }
+
         .login-card {
-            background: rgba(31, 41, 55, 0.95);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(75, 85, 99, 0.8);
+            background: rgba(31, 41, 55, 0.15);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 16px;
             padding: 3rem;
             min-width: 400px;
             max-width: 450px;
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.1);
             animation: fadeInUp 0.6s ease-out;
         }
 
@@ -437,6 +734,39 @@
             gap: 0.5rem;
         }
 
+        .password-input-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .password-toggle-btn {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.3s ease;
+            z-index: 10;
+        }
+
+        .password-toggle-btn:hover {
+            color: #14b8a6;
+        }
+
+        .password-toggle-btn i {
+            font-size: 16px;
+        }
+
         .form-label {
             font-size: 0.875rem;
             font-weight: 500;
@@ -451,6 +781,11 @@
             color: white;
             font-size: 1rem;
             transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .form-input.has-toggle {
+            padding-right: 3rem;
         }
 
         .form-input:focus {
@@ -1115,6 +1450,18 @@
         /* Ensure print map leaflet elements don't interfere */
         #printModal .leaflet-container {
             z-index: 50004 !important;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Fix for tile grid lines/seams in all Leaflet maps */
+        .leaflet-container .leaflet-tile-container img {
+            width: 256.5px !important;
+            height: 256.5px !important;
+            margin: 0 -0.25px -0.25px 0 !important;
         }
         
         #printModal .leaflet-control-container {
@@ -1148,6 +1495,24 @@
     </style>
 </head>
 <body class="bg-gray-900 text-white overflow-hidden">
+    <!-- Custom Confirmation Modal -->
+    <div id="customModal" class="confirm-modal-overlay">
+        <div class="confirm-modal">
+            <div id="customModalIcon" class="confirm-modal-icon"></div>
+            <div id="customModalTitle" class="confirm-modal-title">Confirm Action</div>
+            <div id="customModalMessage" class="confirm-modal-message">
+                Are you sure you want to continue?
+            </div>
+            <div id="customModalInput" class="confirm-modal-input-container" style="display: none;">
+                <input type="text" id="customModalInputField" class="confirm-modal-input" placeholder="Enter value...">
+            </div>
+            <div id="customModalButtons" class="confirm-modal-buttons">
+                <button id="customModalOkBtn" class="confirm-modal-btn confirm-modal-btn-ok">OK</button>
+                <button id="customModalCancelBtn" class="confirm-modal-btn confirm-modal-btn-cancel" style="display: none;">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
     <!-- Login Container -->
     <div id="loginContainer">
         <div class="login-card">
@@ -1173,14 +1538,19 @@
                 
                 <div class="form-group">
                     <label for="password" class="form-label">Password</label>
-                    <input 
-                        type="password" 
-                        id="password" 
-                        name="password" 
-                        class="form-input" 
-                        placeholder="Enter your password"
-                        required
-                    >
+                    <div class="password-input-container">
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            class="form-input has-toggle" 
+                            placeholder="Enter your password"
+                            required
+                        >
+                        <button type="button" class="password-toggle-btn" id="passwordToggle">
+                            <i class="fas fa-eye" id="passwordToggleIcon"></i>
+                        </button>
+                    </div>
                 </div>
                 
                 <button type="submit" id="loginButton" class="login-button">
@@ -1201,7 +1571,7 @@
             <header class="glass-effect fixed top-0 left-0 right-0 z-50 px-6 py-4">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-4">
-                        <img src="AERA LOGO.png" alt="Aera Logo" class="h-12 w-auto">
+                        <img src="assets/AERA LOGO.png" alt="Aera Logo" class="h-12 w-auto">
                     </div>
                     
                     <!-- User Info and Logout -->
@@ -1696,6 +2066,214 @@
             Delete
         </div>
     </div>
+
+    <!-- Map Context Menu for Basemap Selection -->
+    <div id="mapContextMenu" class="custom-context-menu">
+        <div class="context-menu-item context-menu-parent" id="changeBasemapOption">
+            <i class="fas fa-map"></i>
+            Change Basemap
+            <i class="fas fa-chevron-right context-menu-arrow"></i>
+            <div class="context-submenu" id="basemapSubmenu">
+                <!-- OSM Group -->
+                <div class="context-menu-group-header">OSM</div>
+                <div class="context-menu-item basemap-option satellite-option" data-basemap="osm-no-labels">
+                    <span>
+                        <i class="fas fa-map"></i>
+                        OSM (no labels)
+                    </span>
+                    <label class="label-toggle">
+                        <input type="checkbox" class="label-checkbox" data-labels="osm-standard">
+                        <span class="label-text">+ Show Labels</span>
+                    </label>
+                </div>
+                <div class="context-menu-item basemap-option" data-basemap="osm-hot">
+                    <i class="fas fa-hand-holding-heart"></i>
+                    OSM Humanitarian
+                </div>
+                <div class="context-menu-item basemap-option" data-basemap="osm-opnv">
+                    <i class="fas fa-subway"></i>
+                    OSM ÖPNV (Public Transport)
+                </div>
+                <div class="context-menu-item basemap-option" data-basemap="osm-dark">
+                    <i class="fas fa-moon"></i>
+                    OSM Dark
+                </div>
+                <div class="context-menu-item basemap-option" data-basemap="osm-satellite">
+                    <i class="fas fa-satellite"></i>
+                    OSM Satellite
+                </div>
+                
+                <div class="context-menu-separator"></div>
+                
+                <!-- ESRI Group -->
+                <div class="context-menu-group-header">ESRI</div>
+                <div class="context-menu-item basemap-option satellite-option" data-basemap="esri-world-imagery">
+                    <span>
+                        <i class="fas fa-satellite-dish"></i>
+                        World Imagery (Satellite)
+                    </span>
+                    <label class="label-toggle">
+                        <input type="checkbox" class="label-checkbox" data-labels="esri-imagery-labels">
+                        <span class="label-text">+ Show Labels</span>
+                    </label>
+                </div>
+                <div class="context-menu-item basemap-option" data-basemap="esri-streets">
+                    <i class="fas fa-road"></i>
+                    Street
+                </div>
+                <div class="context-menu-item basemap-option" data-basemap="esri-topo">
+                    <i class="fas fa-mountain"></i>
+                    Topo
+                </div>
+                
+                <div class="context-menu-separator"></div>
+                
+                <!-- Google Group -->
+                <div class="context-menu-group-header">Google</div>
+                <div class="context-menu-item basemap-option satellite-option" data-basemap="google-satellite">
+                    <span>
+                        <i class="fab fa-google"></i>
+                        Satellite (no labels) [default]
+                    </span>
+                    <label class="label-toggle">
+                        <input type="checkbox" class="label-checkbox" data-labels="google-labels">
+                        <span class="label-text">+ Show Labels</span>
+                    </label>
+                </div>
+                <div class="context-menu-item basemap-option" data-basemap="google-hybrid">
+                    <i class="fab fa-google"></i>
+                    Hybrid
+                </div>
+                <div class="context-menu-item basemap-option" data-basemap="google-terrain">
+                    <i class="fab fa-google"></i>
+                    Terrain
+                </div>
+                
+                <div class="context-menu-separator"></div>
+                
+                <!-- Bing Group -->
+                <div class="context-menu-group-header">Bing</div>
+                <div class="context-menu-item basemap-option satellite-option" data-basemap="bing-aerial">
+                    <span>
+                        <i class="fas fa-plane"></i>
+                        Bing Aerial (no labels)
+                    </span>
+                    <label class="label-toggle">
+                        <input type="checkbox" class="label-checkbox" data-labels="bing-aerial-labels">
+                        <span class="label-text">+ Show Labels</span>
+                    </label>
+                </div>
+                <div class="context-menu-item basemap-option" data-basemap="bing-road">
+                    <i class="fas fa-road"></i>
+                    Road
+                </div>
+                
+                <div class="context-menu-separator"></div>
+                
+                <!-- CARTO Group -->
+                <div class="context-menu-group-header">CARTO</div>
+                <div class="context-menu-item basemap-option satellite-option" data-basemap="carto-positron">
+                    <span>
+                        <i class="fas fa-sun"></i>
+                        Positron (no labels)
+                    </span>
+                    <label class="label-toggle">
+                        <input type="checkbox" class="label-checkbox" data-labels="carto-positron-labels">
+                        <span class="label-text">+ Show Labels</span>
+                    </label>
+                </div>
+                <div class="context-menu-item basemap-option satellite-option" data-basemap="carto-dark-matter">
+                    <span>
+                        <i class="fas fa-moon"></i>
+                        Dark Matter (no labels)
+                    </span>
+                    <label class="label-toggle">
+                        <input type="checkbox" class="label-checkbox" data-labels="carto-dark-matter-labels">
+                        <span class="label-text">+ Show Labels</span>
+                    </label>
+                </div>
+                <div class="context-menu-item basemap-option satellite-option" data-basemap="carto-voyager">
+                    <span>
+                        <i class="fas fa-compass"></i>
+                        Voyager (no labels)
+                    </span>
+                    <label class="label-toggle">
+                        <input type="checkbox" class="label-checkbox" data-labels="carto-voyager-labels">
+                        <span class="label-text">+ Show Labels</span>
+                    </label>
+                </div>
+                
+                <div class="context-menu-separator"></div>
+                
+                <!-- Thunderforest Group -->
+                <div class="context-menu-group-header">Thunderforest</div>
+                <div class="context-menu-item basemap-option" data-basemap="thunderforest-cycle">
+                    <i class="fas fa-bicycle"></i>
+                    Open Cycle
+                </div>
+                <div class="context-menu-item basemap-option" data-basemap="thunderforest-dark">
+                    <i class="fas fa-moon"></i>
+                    Thunderforest Dark
+                </div>
+                <div class="context-menu-item basemap-option" data-basemap="thunderforest-diablo">
+                    <i class="fas fa-fire"></i>
+                    Thunderforest Diablo
+                </div>
+                <div class="context-menu-item basemap-option" data-basemap="thunderforest-outdoor">
+                    <i class="fas fa-mountain"></i>
+                    Thunderforest Outdoor
+                </div>
+                <div class="context-menu-item basemap-option" data-basemap="thunderforest-old">
+                    <i class="fas fa-history"></i>
+                    Thunderforest Old
+                </div>
+                <div class="context-menu-item basemap-option" data-basemap="thunderforest-neighborhood">
+                    <i class="fas fa-home"></i>
+                    Thunderforest Neighborhood
+                </div>
+                
+                <div class="context-menu-separator"></div>
+                
+                <!-- Maptiler Group -->
+                <div class="context-menu-group-header">Maptiler</div>
+                <div class="context-menu-item basemap-option" data-basemap="maptiler-aquarelle">
+                    <i class="fas fa-paint-brush"></i>
+                    Aquarelle
+                </div>
+                <div class="context-menu-item basemap-option" data-basemap="maptiler-backdrop">
+                    <i class="fas fa-image"></i>
+                    Backdrop
+                </div>
+                <div class="context-menu-item basemap-option" data-basemap="maptiler-topography">
+                    <i class="fas fa-mountain"></i>
+                    Topography
+                </div>
+                <div class="context-menu-item basemap-option" data-basemap="maptiler-winter">
+                    <i class="fas fa-snowflake"></i>
+                    Winter
+                </div>
+                <div class="context-menu-item basemap-option satellite-option" data-basemap="maptiler-openstreet-no-labels">
+                    <span>
+                        <i class="fas fa-map-marked"></i>
+                        OpenStreet (no labels)
+                    </span>
+                    <label class="label-toggle">
+                        <input type="checkbox" class="label-checkbox" data-labels="maptiler-openstreet-labels">
+                        <span class="label-text">+ Show Labels</span>
+                    </label>
+                </div>
+                
+                <div class="context-menu-separator"></div>
+                
+                <!-- Waze Group -->
+                <div class="context-menu-group-header">Other</div>
+                <div class="context-menu-item basemap-option" data-basemap="waze">
+                    <i class="fas fa-route"></i>
+                    Waze
+                </div>
+            </div>
+        </div>
+    </div>
     </div> <!-- End of webgisContainer -->
 
     <!-- Scripts -->
@@ -1708,6 +2286,9 @@
     <!-- Leaflet Sidebar JS -->
     <script src="https://unpkg.com/leaflet-sidebar-v2@3.2.3/js/leaflet-sidebar.min.js"></script>
     
+    <!-- ESRI Leaflet for Basemaps -->
+    <script src="https://unpkg.com/esri-leaflet@3.0.10/dist/esri-leaflet.js"></script>
+    
     <!-- toGeoJSON for KML support -->
     <script src="https://unpkg.com/@mapbox/togeojson@0.16.0/togeojson.js"></script>
     
@@ -1717,8 +2298,8 @@
     <!-- Supabase JavaScript Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- HTML2Canvas for Print Export -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Leaflet-Image for Print Export -->
+    <script src="https://unpkg.com/leaflet-image/leaflet-image.js"></script>
     
     <!-- Main Application Script -->
     <script>
@@ -1731,7 +2312,373 @@
         let activeFilters = new Map();
         let layerOrder = []; // Array to track layer display order
         
+        // Basemap variables
+        let currentBasemap = null;
+        let basemaps = {};
+        
+        // Initialize basemap definitions
+        function initializeBasemaps() {
+            basemaps = {
+                // OSM Basemaps
+                'osm-no-labels': L.tileLayer('https://tile.openstreetmap.bzh/ca/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles courtesy of <a href="https://www.openstreetmap.cat" target="_blank">Breton OpenStreetMap Team</a>'
+                }),
+                'osm-standard': L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: 'OpenStreetMap Labels',
+                    maxZoom: 19
+                }),
+                'osm-hot': L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">Humanitarian OpenStreetMap Team</a> hosted by <a href="https://openstreetmap.fr/" target="_blank">OpenStreetMap France</a>'
+                }),
+                'osm-opnv': L.tileLayer('https://tileserver.memomaps.de/tilegen/{z}/{x}/{y}.png', {
+                    maxZoom: 18,
+                    attribution: 'Map <a href="https://memomaps.de/">memomaps.de</a> <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }),
+                'osm-dark': L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
+                    minZoom: 0,
+                    maxZoom: 20,
+                    attribution: '&copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }),
+                'osm-satellite': L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_satellite/{z}/{x}/{y}{r}.jpg', {
+                    minZoom: 0,
+                    maxZoom: 20,
+                    attribution: '&copy; CNES, Distribution Airbus DS, © Airbus DS, © PlanetObserver (Contains Copernicus Data) | &copy; <a href="https://www.stadiamaps.com/" target="_blank">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }),
+
+                // ESRI Basemaps
+                'esri-world-imagery': L.esri.basemapLayer('Imagery'),
+                'esri-imagery-labels': L.esri.basemapLayer('ImageryLabels'),
+                'esri-streets': L.esri.basemapLayer('Streets'),
+                'esri-topo': L.esri.basemapLayer('Topographic'),
+
+                // Google Basemaps
+                'google-satellite': L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                    maxZoom: 20,
+                    subdomains: ['mt0','mt1','mt2','mt3'],
+                    attribution: 'Google Satellite'
+                }),
+                'google-labels': L.tileLayer('https://{s}.google.com/vt/lyrs=h&x={x}&y={y}&z={z}', {
+                    maxZoom: 20,
+                    subdomains: ['mt0','mt1','mt2','mt3'],
+                    attribution: 'Google Labels'
+                }),
+                'google-hybrid': L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+                    maxZoom: 20,
+                    subdomains: ['mt0','mt1','mt2','mt3'],
+                    attribution: 'Google Hybrid'
+                }),
+                'google-terrain': L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+                    maxZoom: 20,
+                    subdomains: ['mt0','mt1','mt2','mt3'],
+                    attribution: 'Google Terrain'
+                }),
+
+                // Bing Basemaps 
+                'bing-aerial': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: '© Esri, © Microsoft',
+                    maxZoom: 19
+                }),
+                'bing-aerial-labels': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: '© Esri, © Microsoft - Labels',
+                    maxZoom: 19
+                }),
+                'bing-road': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: '© Esri, © Microsoft',
+                    maxZoom: 19
+                }),
+
+                // CARTO Basemaps
+                'carto-positron': L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}.png', {
+                    attribution: '© CARTO, © OpenStreetMap',
+                    maxZoom: 19,
+                    subdomains: 'abcd'
+                }),
+                'carto-positron-labels': L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png', {
+                    attribution: '© CARTO, © OpenStreetMap',
+                    maxZoom: 19,
+                    subdomains: 'abcd'
+                }),
+                'carto-dark-matter': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}.png', {
+                    attribution: '© CARTO, © OpenStreetMap',
+                    maxZoom: 19,
+                    subdomains: 'abcd'
+                }),
+                'carto-dark-matter-labels': L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png', {
+                    attribution: '© CARTO, © OpenStreetMap',
+                    maxZoom: 19,
+                    subdomains: 'abcd'
+                }),
+                'carto-voyager': L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}.png', {
+                    attribution: '© CARTO, © OpenStreetMap',
+                    maxZoom: 19,
+                    subdomains: 'abcd'
+                }),
+                'carto-voyager-labels': L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}.png', {
+                    attribution: '© CARTO, © OpenStreetMap',
+                    maxZoom: 19,
+                    subdomains: 'abcd'
+                }),
+
+                // Waze Basemap (using approximation since Waze doesn't provide public tiles)
+                'waze': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: 'Waze Style (OSM)',
+                    maxZoom: 19
+                }),
+
+                // Thunderforest Basemaps
+                'thunderforest-cycle': L.tileLayer('https://{s}.tile.thunderforest.com/cycle/{z}/{x}/{y}{r}.png?apikey=f5e725f7a49444eb8a9941f5a2fc6351', {
+                    attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 22
+                }),
+                'thunderforest-dark': L.tileLayer('https://{s}.tile.thunderforest.com/transport-dark/{z}/{x}/{y}{r}.png?apikey=f5e725f7a49444eb8a9941f5a2fc6351', {
+                    attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 22
+                }),
+                'thunderforest-diablo': L.tileLayer('https://{s}.tile.thunderforest.com/spinal-map/{z}/{x}/{y}{r}.png?apikey=f5e725f7a49444eb8a9941f5a2fc6351', {
+                    attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 22
+                }),
+                'thunderforest-outdoor': L.tileLayer('https://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}{r}.png?apikey=f5e725f7a49444eb8a9941f5a2fc6351', {
+                    attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 22
+                }),
+                'thunderforest-old': L.tileLayer('https://{s}.tile.thunderforest.com/pioneer/{z}/{x}/{y}{r}.png?apikey=f5e725f7a49444eb8a9941f5a2fc6351', {
+                    attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 22
+                }),
+                'thunderforest-neighborhood': L.tileLayer('https://{s}.tile.thunderforest.com/neighbourhood/{z}/{x}/{y}{r}.png?apikey=f5e725f7a49444eb8a9941f5a2fc6351', {
+                    attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 22
+                }),
+
+                // Maptiler Basemaps
+                'maptiler-aquarelle': L.tileLayer('https://api.maptiler.com/maps/aquarelle/{z}/{x}/{y}.png?key=bbKm0mAybeaIXWDXmQka', {
+                    attribution: '&copy; <a href="https://www.maptiler.com/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 20
+                }),
+                'maptiler-backdrop': L.tileLayer('https://api.maptiler.com/maps/backdrop/{z}/{x}/{y}.png?key=bbKm0mAybeaIXWDXmQka', {
+                    attribution: '&copy; <a href="https://www.maptiler.com/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 20
+                }),
+                'maptiler-topography': L.tileLayer('https://api.maptiler.com/maps/topo-v2/{z}/{x}/{y}.png?key=bbKm0mAybeaIXWDXmQka', {
+                    attribution: '&copy; <a href="https://www.maptiler.com/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 20
+                }),
+                'maptiler-winter': L.tileLayer('https://api.maptiler.com/maps/winter/{z}/{x}/{y}.png?key=bbKm0mAybeaIXWDXmQka', {
+                    attribution: '&copy; <a href="https://www.maptiler.com/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 20
+                }),
+                'maptiler-openstreet-no-labels': L.tileLayer('https://api.maptiler.com/maps/0198323e-3089-7276-a811-4cd52a9474a6/{z}/{x}/{y}.png?key=bbKm0mAybeaIXWDXmQka', {
+                    attribution: '&copy; <a href="https://www.maptiler.com/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 20
+                }),
+                'maptiler-openstreet-labels': L.tileLayer('https://api.maptiler.com/maps/openstreetmap/{z}/{x}/{y}.png?key=bbKm0mAybeaIXWDXmQka', {
+                    attribution: '&copy; <a href="https://www.maptiler.com/" target="_blank">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                    maxZoom: 20
+                })
+            };
+        }
+        
         // Supabase Configuration
+        
+        // **CUSTOM MODAL SYSTEM - ALERT, CONFIRM, AND PROMPT**
+        
+        // Generic modal function
+        function showCustomModal(type, message, title, defaultValue = '', okText = 'OK', cancelText = 'Cancel') {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('customModal');
+                const messageEl = document.getElementById('customModalMessage');
+                const titleEl = document.getElementById('customModalTitle');
+                const iconEl = document.getElementById('customModalIcon');
+                const inputContainer = document.getElementById('customModalInput');
+                const inputField = document.getElementById('customModalInputField');
+                const buttonsContainer = document.getElementById('customModalButtons');
+                const okBtn = document.getElementById('customModalOkBtn');
+                const cancelBtn = document.getElementById('customModalCancelBtn');
+                
+                // Set the message and title
+                messageEl.textContent = message;
+                titleEl.textContent = title;
+                
+                // Configure modal based on type
+                iconEl.className = 'confirm-modal-icon';
+                inputContainer.style.display = 'none';
+                cancelBtn.style.display = 'none';
+                
+                switch (type) {
+                    case 'alert':
+                        iconEl.classList.add('info');
+                        iconEl.innerHTML = '<i class="fas fa-info-circle"></i>';
+                        okBtn.textContent = okText;
+                        break;
+                        
+                    case 'confirm':
+                        iconEl.classList.add('question');
+                        iconEl.innerHTML = '<i class="fas fa-question-circle"></i>';
+                        okBtn.textContent = okText;
+                        cancelBtn.textContent = cancelText;
+                        cancelBtn.style.display = 'inline-block';
+                        break;
+                        
+                    case 'prompt':
+                        iconEl.classList.add('question');
+                        iconEl.innerHTML = '<i class="fas fa-edit"></i>';
+                        okBtn.textContent = okText;
+                        cancelBtn.textContent = cancelText;
+                        cancelBtn.style.display = 'inline-block';
+                        inputContainer.style.display = 'block';
+                        inputField.value = defaultValue || '';
+                        inputField.placeholder = 'Enter value...';
+                        break;
+                        
+                    case 'success':
+                        iconEl.classList.add('success');
+                        iconEl.innerHTML = '<i class="fas fa-check-circle"></i>';
+                        okBtn.textContent = okText;
+                        break;
+                        
+                    case 'warning':
+                        iconEl.classList.add('warning');
+                        iconEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+                        okBtn.textContent = okText;
+                        break;
+                        
+                    case 'error':
+                        iconEl.classList.add('error');
+                        iconEl.innerHTML = '<i class="fas fa-times-circle"></i>';
+                        okBtn.textContent = okText;
+                        break;
+                }
+                
+                // Show the modal
+                modal.classList.add('show');
+                
+                // Focus appropriate element
+                setTimeout(() => {
+                    if (type === 'prompt') {
+                        inputField.focus();
+                        inputField.select();
+                    } else {
+                        okBtn.focus();
+                    }
+                }, 100);
+                
+                // Handle button clicks and responses
+                const handleOk = () => {
+                    // Get the input value BEFORE cleanup
+                    const inputValue = (type === 'prompt') ? inputField.value : null;
+                    
+                    cleanup();
+                    
+                    switch (type) {
+                        case 'alert':
+                        case 'success':
+                        case 'warning':
+                        case 'error':
+                            resolve(true);
+                            break;
+                        case 'confirm':
+                            resolve(true);
+                            break;
+                        case 'prompt':
+                            resolve(inputValue);
+                            break;
+                    }
+                };
+                
+                const handleCancel = () => {
+                    cleanup();
+                    
+                    switch (type) {
+                        case 'confirm':
+                            resolve(false);
+                            break;
+                        case 'prompt':
+                            resolve(null);
+                            break;
+                        default:
+                            resolve(false);
+                            break;
+                    }
+                };
+                
+                const handleKeydown = (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleOk();
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        if (type === 'alert' || type === 'success' || type === 'warning' || type === 'error') {
+                            handleOk();
+                        } else {
+                            handleCancel();
+                        }
+                    }
+                };
+                
+                const handleOverlayClick = (e) => {
+                    if (e.target === modal) {
+                        if (type === 'alert' || type === 'success' || type === 'warning' || type === 'error') {
+                            handleOk();
+                        } else {
+                            handleCancel();
+                        }
+                    }
+                };
+                
+                const cleanup = () => {
+                    modal.classList.remove('show');
+                    okBtn.removeEventListener('click', handleOk);
+                    cancelBtn.removeEventListener('click', handleCancel);
+                    document.removeEventListener('keydown', handleKeydown);
+                    modal.removeEventListener('click', handleOverlayClick);
+                    
+                    // Clear input field
+                    inputField.value = '';
+                };
+                
+                // Add event listeners
+                okBtn.addEventListener('click', handleOk);
+                cancelBtn.addEventListener('click', handleCancel);
+                document.addEventListener('keydown', handleKeydown);
+                modal.addEventListener('click', handleOverlayClick);
+            });
+        }
+        
+        // Public API functions
+        function showAlert(message, title = 'Information') {
+            return showCustomModal('alert', message, title);
+        }
+        
+        function showConfirm(message, title = 'Confirm Action') {
+            return showCustomModal('confirm', message, title);
+        }
+        
+        function showPrompt(message, defaultValue = '', title = 'Input Required') {
+            return showCustomModal('prompt', message, title, defaultValue);
+        }
+        
+        function showSuccess(message, title = 'Success') {
+            return showCustomModal('success', message, title);
+        }
+        
+        function showWarning(message, title = 'Warning') {
+            return showCustomModal('warning', message, title);
+        }
+        
+        function showError(message, title = 'Error') {
+            return showCustomModal('error', message, title);
+        }
+        
+        // Make functions globally available
+        window.showAlert = showAlert;
+        window.showConfirm = showConfirm;
+        window.showPrompt = showPrompt;
+        window.showSuccess = showSuccess;
+        window.showWarning = showWarning;
+        window.showError = showError;
         const SUPABASE_URL = 'https://xravncpxynlzzewsqawh.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhyYXZuY3B4eW5senpld3NxYXdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4NDk5MTEsImV4cCI6MjA2ODQyNTkxMX0.2IE-dzQDVvq8b9u7C0oqy35FwVVMu96OGHBOYQEMSZw';
         let supabase;
@@ -1943,7 +2890,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
         document.addEventListener('DOMContentLoaded', async function() {
             // Initialize Supabase first
             if (!initializeSupabase()) {
-                alert('Failed to connect to Supabase. Some features may not work properly.');
+                await showError('Failed to connect to Supabase. Some features may not work properly.', 'Connection Error');
                 return;
             }
             
@@ -1973,19 +2920,22 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
 
         // Initialize the Leaflet map
         function initializeMap() {
+            // Initialize basemap definitions first
+            initializeBasemaps();
+            
             map = L.map('map', {
                 center: [14.5995, 120.9842], // Philippines center
                 zoom: 6,
                 zoomControl: true,
                 dragging: true, // Enable normal left-click dragging
                 doubleClickZoom: false, // Disable double-click zoom
-                boxZoom: false // Disable Shift+drag zoom box
+                boxZoom: false, // Disable Shift+drag zoom box
+                scrollWheelZoom: true // Default scroll wheel zoom behavior
             });
 
-            // Add ESRI Imagery basemap
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Developed by Isaac Enage for Ayala Land, Royal Asia Land, and AKL Properties.'
-            }).addTo(map);
+            // Set initial basemap to Google Satellite (no labels) as default
+            currentBasemap = basemaps['google-satellite'];
+            currentBasemap.addTo(map);
 
             // Move zoom control to bottom
             map.zoomControl.setPosition('bottomright');
@@ -1995,11 +2945,327 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             
             // Add middle mouse button panning functionality
             initializeMiddleMousePanning();
+            
+            // Add Ctrl+right-click zoom box functionality
+            initializeZoomBox(map);
+            
+            // Setup map context menu for basemap switching
+            setupMapContextMenu();
         }
 
         // Initialize sidebar
         function initializeSidebar() {
             sidebar = L.control.sidebar('sidebar').addTo(map);
+        }
+
+        // Basemap Functions
+        let currentLabels = null;
+        let previewBasemap = null;
+        let previewLabels = null;
+        let originalBasemap = null;
+        let originalLabels = null;
+
+        function switchBasemap(basemapKey) {
+            console.log(`Attempting to switch to basemap: ${basemapKey}`);
+            
+            // Remove current basemap
+            if (currentBasemap) {
+                map.removeLayer(currentBasemap);
+            }
+            
+            // Remove current labels
+            if (currentLabels) {
+                map.removeLayer(currentLabels);
+                currentLabels = null;
+            }
+            
+            // Verify basemap exists
+            if (!basemaps[basemapKey]) {
+                console.error(`Basemap '${basemapKey}' not found in basemaps object`);
+                console.log('Available basemaps:', Object.keys(basemaps));
+                return;
+            }
+            
+            // Add new basemap
+            currentBasemap = basemaps[basemapKey];
+            map.addLayer(currentBasemap);
+            
+            // Send basemap to back so it doesn't cover other layers
+            currentBasemap.bringToBack();
+            
+            // Force map to re-render tiles
+            setTimeout(() => {
+                map.invalidateSize();
+                map.getContainer().focus(); // Ensure map has focus for proper rendering
+            }, 100);
+            
+            console.log(`Successfully switched basemap to: ${basemapKey}`);
+        }
+
+        function toggleLabels(show, layerName) {
+            console.log(`Toggling labels - show: ${show}, layer: ${layerName}`);
+            
+            // Remove existing labels
+            if (currentLabels) {
+                map.removeLayer(currentLabels);
+                currentLabels = null;
+            }
+            
+            // Add new labels if requested
+            if (show && layerName && basemaps[layerName]) {
+                currentLabels = basemaps[layerName];
+                map.addLayer(currentLabels);
+                console.log(`Added labels: ${layerName}`);
+                
+                // Force map to re-render
+                setTimeout(() => {
+                    map.invalidateSize();
+                }, 50);
+            }
+        }
+
+        function previewBasemapOnHover(basemapKey, labelKey = null) {
+            console.log(`Previewing basemap: ${basemapKey}, labels: ${labelKey}`);
+            
+            // Store original state if this is the first preview
+            if (!originalBasemap) {
+                originalBasemap = currentBasemap;
+                originalLabels = currentLabels;
+            }
+            
+            // Remove current preview layers
+            if (previewBasemap) {
+                map.removeLayer(previewBasemap);
+                previewBasemap = null;
+            }
+            if (previewLabels) {
+                map.removeLayer(previewLabels);
+                previewLabels = null;
+            }
+            
+            // Remove current basemap and labels temporarily for preview
+            if (currentBasemap) {
+                map.removeLayer(currentBasemap);
+            }
+            if (currentLabels) {
+                map.removeLayer(currentLabels);
+            }
+            
+            // Add preview basemap
+            if (basemaps[basemapKey]) {
+                previewBasemap = basemaps[basemapKey];
+                map.addLayer(previewBasemap);
+                previewBasemap.bringToBack();
+                
+                // Add preview labels if specified
+                if (labelKey && basemaps[labelKey]) {
+                    previewLabels = basemaps[labelKey];
+                    map.addLayer(previewLabels);
+                }
+                
+                // Force map to re-render preview
+                setTimeout(() => {
+                    map.invalidateSize();
+                }, 50);
+            } else {
+                console.error(`Preview basemap '${basemapKey}' not found`);
+            }
+        }
+
+        function revertToOriginalBasemap() {
+            // Only revert if we have an original to revert to
+            if (!originalBasemap) {
+                return;
+            }
+            
+            // Remove preview layers
+            if (previewBasemap) {
+                map.removeLayer(previewBasemap);
+                previewBasemap = null;
+            }
+            if (previewLabels) {
+                map.removeLayer(previewLabels);
+                previewLabels = null;
+            }
+            
+            // Restore original basemap
+            if (originalBasemap) {
+                // Remove current basemap first
+                if (currentBasemap && currentBasemap !== originalBasemap) {
+                    map.removeLayer(currentBasemap);
+                }
+                
+                map.addLayer(originalBasemap);
+                originalBasemap.bringToBack();
+                currentBasemap = originalBasemap;
+                originalBasemap = null;
+            }
+            
+            // Restore original labels
+            if (originalLabels) {
+                // Remove current labels first
+                if (currentLabels && currentLabels !== originalLabels) {
+                    map.removeLayer(currentLabels);
+                }
+                
+                map.addLayer(originalLabels);
+                currentLabels = originalLabels;
+                originalLabels = null;
+            }
+            
+            // Force map to re-render
+            setTimeout(() => {
+                map.invalidateSize();
+            }, 50);
+        }
+
+        function setupMapContextMenu() {
+            map.on('contextmenu', function(e) {
+                // Check if the click was on a feature or empty map
+                if (!isClickOnFeature(e)) {
+                    showMapContextMenu(e.containerPoint);
+                }
+            });
+
+            // Add event listeners for basemap menu items with hover preview
+            const basemapOptions = document.querySelectorAll('.basemap-option');
+            basemapOptions.forEach(option => {
+                // Hover preview functionality
+                option.addEventListener('mouseenter', function(e) {
+                    const basemapKey = this.getAttribute('data-basemap');
+                    if (basemapKey && basemaps[basemapKey]) {
+                        // Store original state before preview
+                        originalBasemap = currentBasemap;
+                        originalLabels = currentLabels;
+                        
+                        // Check if this satellite option has labels
+                        const labelCheckbox = this.querySelector('.label-checkbox');
+                        const labelsKey = labelCheckbox ? labelCheckbox.getAttribute('data-labels') : null;
+                        const showLabels = labelCheckbox ? labelCheckbox.checked : false;
+                        
+                        previewBasemapOnHover(basemapKey, showLabels ? labelsKey : null);
+                    }
+                });
+                
+                option.addEventListener('mouseleave', function(e) {
+                    // Only revert if we're still leaving and not entering another option
+                    setTimeout(() => {
+                        if (!document.querySelector('.basemap-option:hover')) {
+                            revertToOriginalBasemap();
+                        }
+                    }, 50);
+                });
+                
+                // Click to permanently switch basemap
+                option.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const basemapKey = this.getAttribute('data-basemap');
+                    
+                    // Check if this is a satellite option with labels
+                    const labelCheckbox = this.querySelector('.label-checkbox');
+                    
+                    if (labelCheckbox) {
+                        const labelsKey = labelCheckbox.getAttribute('data-labels');
+                        const showLabels = labelCheckbox.checked;
+                        
+                        switchBasemap(basemapKey);
+                        if (showLabels) {
+                            toggleLabels(true, labelsKey);
+                        } else {
+                            toggleLabels(false);
+                        }
+                    } else {
+                        switchBasemap(basemapKey);
+                        toggleLabels(false); // Clear any existing labels
+                    }
+                    
+                    // Clear preview state
+                    originalBasemap = null;
+                    originalLabels = null;
+                    
+                    // Close context menu
+                    hideMapContextMenu();
+                });
+            });
+            
+            // Handle label checkbox clicks separately to prevent basemap switching
+            const labelCheckboxes = document.querySelectorAll('.label-checkbox');
+            labelCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('click', function(e) {
+                    e.stopPropagation(); // Prevent triggering the basemap option click
+                    
+                    const labelsKey = this.getAttribute('data-labels');
+                    const showLabels = this.checked;
+                    
+                    // Apply labels immediately during preview
+                    if (showLabels) {
+                        toggleLabels(true, labelsKey);
+                    } else {
+                        toggleLabels(false);
+                    }
+                });
+            });
+
+            // Hide context menu when clicking elsewhere
+            document.addEventListener('click', function(e) {
+                const mapContextMenu = e.target ? e.target.closest('#mapContextMenu') : null;
+                if (!mapContextMenu) {
+                    hideMapContextMenu();
+                    revertToOriginalBasemap();
+                }
+            });
+
+            // Hide context menu on map click
+            map.on('click', function() {
+                hideMapContextMenu();
+                revertToOriginalBasemap();
+            });
+        }
+
+        function isClickOnFeature(e) {
+            // Check if any visible layers contain features at this point
+            let hasFeature = false;
+            
+            layers.forEach((layerInfo, layerId) => {
+                if (layerInfo.visible && layerInfo.layer) {
+                    // Check if this layer has features at the clicked point
+                    layerInfo.layer.eachLayer(function(featureLayer) {
+                        if (featureLayer.getBounds && featureLayer.getBounds().contains(e.latlng)) {
+                            hasFeature = true;
+                        }
+                    });
+                }
+            });
+            
+            return hasFeature;
+        }
+
+        function showMapContextMenu(containerPoint) {
+            const contextMenu = document.getElementById('mapContextMenu');
+            
+            // Position the context menu at cursor location
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = containerPoint.x + 'px';
+            contextMenu.style.top = containerPoint.y + 'px';
+            
+            // Ensure menu stays within viewport
+            const rect = contextMenu.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            
+            if (rect.right > viewportWidth) {
+                contextMenu.style.left = (containerPoint.x - rect.width) + 'px';
+            }
+            if (rect.bottom > viewportHeight) {
+                contextMenu.style.top = (containerPoint.y - rect.height) + 'px';
+            }
+        }
+
+        function hideMapContextMenu() {
+            const contextMenu = document.getElementById('mapContextMenu');
+            contextMenu.style.display = 'none';
         }
 
         // Initialize event listeners
@@ -2068,6 +3334,26 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             const loginButton = document.getElementById('loginButton');
             const errorMessage = document.getElementById('errorMessage');
             const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+            const passwordToggle = document.getElementById('passwordToggle');
+            const passwordInput = document.getElementById('password');
+            const passwordToggleIcon = document.getElementById('passwordToggleIcon');
+
+            // Password visibility toggle functionality
+            passwordToggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                if (passwordInput.type === 'password') {
+                    // Show password
+                    passwordInput.type = 'text';
+                    passwordToggleIcon.classList.remove('fa-eye');
+                    passwordToggleIcon.classList.add('fa-eye-slash');
+                } else {
+                    // Hide password
+                    passwordInput.type = 'password';
+                    passwordToggleIcon.classList.remove('fa-eye-slash');
+                    passwordToggleIcon.classList.add('fa-eye');
+                }
+            });
 
             // Handle login form submission
             loginForm.addEventListener('submit', async (e) => {
@@ -2103,9 +3389,9 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             });
 
             // Handle forgot password link (placeholder)
-            forgotPasswordLink.addEventListener('click', (e) => {
+            forgotPasswordLink.addEventListener('click', async (e) => {
                 e.preventDefault();
-                alert('Password reset functionality will be implemented soon. Please contact your administrator.');
+                await showAlert('Password reset functionality will be implemented soon. Please contact your administrator.', 'Feature Not Available');
             });
 
             // Helper functions for login UI
@@ -2134,10 +3420,11 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
         // Setup logout functionality
         function setupLogoutListener() {
             document.getElementById('logoutButton').addEventListener('click', async () => {
-                if (confirm('Are you sure you want to logout?')) {
+                const confirmed = await showConfirm('Are you sure you want to logout?', 'Logout Confirmation');
+                if (confirmed) {
                     const result = await signOutUser();
                     if (!result.success) {
-                        alert('Error logging out: ' + result.error);
+                        await showError('Error logging out: ' + result.error, 'Logout Error');
                     }
                 }
             });
@@ -2179,7 +3466,11 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                     }
                 }
                 
-                console.log('🖨️ Print layout editor closed');
+                // **SAFETY: Ensure all layers are visible on main map after closing**
+                console.log('🖨️ Print layout editor closed - ensuring layer visibility');
+                setTimeout(() => {
+                    ensureAllLayersVisible();
+                }, 100);
             });
 
             // Symbology Modal
@@ -2202,18 +3493,18 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
         }
 
         // Handle file upload
-        function handleFileUpload() {
+        async function handleFileUpload() {
             const fileInput = document.getElementById('fileInput');
             const file = fileInput.files[0];
 
             if (!file) {
-                alert('Please select a file to upload.');
+                await showWarning('Please select a file to upload.', 'No File Selected');
                 return;
             }
 
             // Check file size (50MB limit)
             if (file.size > 50 * 1024 * 1024) {
-                alert('File size exceeds 50MB limit.');
+                await showError('File size exceeds 50MB limit.', 'File Too Large');
                 return;
             }
 
@@ -2226,14 +3517,14 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                                file.name.toLowerCase().endsWith('.kmz');
 
             if (!isValidType) {
-                alert('Please upload a valid GeoJSON, KML, or KMZ file.');
+                await showError('Please upload a valid GeoJSON, KML, or KMZ file.', 'Invalid File Type');
                 return;
             }
 
             showUploadProgress();
 
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 try {
                     let geoData;
                     
@@ -2253,7 +3544,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                                     }
                                 });
                                 if (!kmlFile) {
-                                    alert('No KML file found inside KMZ.');
+                                    showError('No KML file found inside KMZ.', 'Invalid KMZ File');
                                     hideUploadProgress();
                                     return;
                                 }
@@ -2263,7 +3554,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                                         const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
                                         const geoData = toGeoJSON.kml(kmlDoc);
                                         if (!geoData || geoData.type !== 'FeatureCollection' || !Array.isArray(geoData.features)) {
-                                            alert('Invalid or empty KML inside KMZ file.');
+                                            showError('Invalid or empty KML inside KMZ file.', 'Invalid KMZ Content');
                                             hideUploadProgress();
                                             return;
                                         }
@@ -2272,15 +3563,15 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                                         document.getElementById('addDataModal').classList.add('hidden');
                                         document.getElementById('fileInput').value = '';
                                     } catch (err) {
-                                        alert('Unable to read this file. Please upload a valid KMZ.');
+                                        showError('Unable to read this file. Please upload a valid KMZ.', 'KMZ Read Error');
                                         hideUploadProgress();
                                     }
                                 }).catch(() => {
-                                    alert('Unable to read this file. Please upload a valid KMZ.');
+                                    showError('Unable to read this file. Please upload a valid KMZ.', 'KMZ Read Error');
                                     hideUploadProgress();
                                 });
                             }).catch(() => {
-                                alert('Unable to read this file. Please upload a valid KMZ.');
+                                showError('Unable to read this file. Please upload a valid KMZ.', 'KMZ Read Error');
                                 hideUploadProgress();
                             });
                         }
@@ -2305,7 +3596,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
 
                 } catch (error) {
                     console.error('Error parsing file:', error);
-                    alert('Error parsing file. Please ensure it\'s a valid GeoJSON, KML, or KMZ file.');
+                    showError('Error parsing file. Please ensure it\'s a valid GeoJSON, KML, or KMZ file.', 'File Parse Error');
                     hideUploadProgress();
                 }
             };
@@ -2336,6 +3627,126 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
         function hideUploadProgress() {
             document.getElementById('uploadProgress').classList.add('hidden');
             document.getElementById('progressBar').style.width = '0%';
+        }
+
+        // Add data to map with preloaded style (prevents symbology flash for Aera layer)
+        function addDataToMapWithPreloadedStyle(geoData, fileName, preloadedStyle, isPermanent = false) {
+            const layerId = 'layer_' + (++layerCounter);
+            const layerName = fileName.replace(/\.(geojson|json|kml)$/i, '');
+
+            console.log(`🎨 Adding layer with preloaded style (no flash):`, {
+                layerId: layerId,
+                layerName: layerName,
+                fileName: fileName,
+                isPermanent: isPermanent,
+                hasPreloadedStyle: !!preloadedStyle
+            });
+
+            // Validate required parameters
+            if (!geoData || !fileName || !layerId) {
+                console.error('Cannot add layer: missing required parameters');
+                return null;
+            }
+
+            // Check if this permanent layer already exists
+            if (isPermanent) {
+                const existingPermanentLayer = Array.from(layers.values()).find(l => 
+                    l.isPermanent && l.name === layerName
+                );
+                if (existingPermanentLayer) {
+                    console.log(`Permanent layer "${layerName}" already exists, skipping duplicate`);
+                    return null;
+                }
+            }
+
+            // Use preloaded style directly - this prevents the flash of default symbology
+            let finalStyle = preloadedStyle;
+            
+            // Apply style based on symbology type
+            let layerStyleFunction;
+            
+            if (preloadedStyle.categoricalField && preloadedStyle.colorMap) {
+                // Categorical symbology - apply color mapping per feature
+                console.log('📊 Applying categorical symbology with preloaded colors');
+                layerStyleFunction = function(feature) {
+                    const fieldValue = feature.properties[preloadedStyle.categoricalField];
+                    const color = preloadedStyle.colorMap[fieldValue] || '#14b8a6'; // fallback color
+                    return {
+                        color: preloadedStyle.strokeColor || '#000000',
+                        weight: preloadedStyle.strokeWidth || 0.5,
+                        opacity: preloadedStyle.strokeOpacity || 1.0,
+                        fillColor: color,
+                        fillOpacity: preloadedStyle.fillOpacity || 1.0
+                    };
+                };
+            } else {
+                // Single symbol symbology - use consistent style
+                console.log('🎯 Applying single symbol symbology with preloaded colors');
+                layerStyleFunction = {
+                    color: preloadedStyle.strokeColor || preloadedStyle.color || '#000000',
+                    weight: preloadedStyle.strokeWidth || preloadedStyle.weight || 0.5,
+                    opacity: preloadedStyle.strokeOpacity || preloadedStyle.opacity || 1.0,
+                    fillColor: preloadedStyle.fillColor || '#888888',
+                    fillOpacity: preloadedStyle.fillOpacity || 0.7
+                };
+            }
+
+            // Create layer with the correct style applied immediately
+            const layer = L.geoJSON(geoData, {
+                renderer: L.canvas(), // Force canvas rendering for leaflet-image export compatibility
+                style: layerStyleFunction,
+                onEachFeature: (feature, layer) => {
+                    if (feature.properties) {
+                        let popupContent = '<div class="text-sm">';
+                        for (let key in feature.properties) {
+                            popupContent += `<strong>${key}:</strong> ${feature.properties[key]}<br>`;
+                        }
+                        popupContent += '</div>';
+                        
+                        // Use right-click popup binding (respects selection mode)
+                        safeBindPopup(layer, popupContent);
+                    }
+                }
+            }).addTo(map);
+
+            // Store layer information with preloaded style
+            layers.set(layerId, {
+                layer: layer,
+                name: layerName,
+                data: geoData,
+                visible: true,
+                style: finalStyle, // Store the complete preloaded style object
+                originalData: JSON.parse(JSON.stringify(geoData)),
+                opacity: preloadedStyle.fillOpacity || 1.0,
+                supabaseLayerId: null,
+                isPermanent: isPermanent,
+                fromDatabase: false,
+                layerId: layerId,
+                createdAt: new Date().toISOString()
+            });
+
+            // Add to layer order for consistent display
+            layerOrder.unshift(layerId);
+
+            console.log(`✅ Layer "${layerName}" created with preloaded symbology - no flash occurred`);
+
+            // Update UI elements
+            updateLayersList();
+            updateLegend();
+
+            // Fit map bounds for permanent layers like Aera
+            if (isPermanent) {
+                setTimeout(() => {
+                    try {
+                        map.fitBounds(layer.getBounds(), { padding: [20, 20] });
+                        console.log(`Map bounds fitted to ${layerName} layer`);
+                    } catch (error) {
+                        console.warn(`Could not fit bounds for ${layerName}:`, error);
+                    }
+                }, 200);
+            }
+
+            return layerId;
         }
 
         // Add data to map
@@ -2381,11 +3792,12 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                 color: '#000000',
                 weight: 0.5,
                 opacity: 1.0,
-                fillColor: '#14b8a6',
-                fillOpacity: 1.0
+                fillColor: '#888888',
+                fillOpacity: 0.7
             };
 
             const layer = L.geoJSON(geoData, {
+                renderer: L.canvas(), // Force canvas rendering for leaflet-image export compatibility
                 style: style,
                 onEachFeature: (feature, layer) => {
                     if (feature.properties) {
@@ -2822,9 +4234,131 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             }
         }
 
+        // Clear cached data from old/deprecated layers to prevent symbology conflicts
+        function clearOldLayerCaches() {
+            console.log('🧹 Clearing old layer caches to prevent symbology conflicts...');
+            
+            try {
+                // Clear localStorage entries that might contain old layer references
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && (key.startsWith('layer_') || key.includes('symbology') || key.includes('style'))) {
+                        keysToRemove.push(key);
+                    }
+                }
+                keysToRemove.forEach(key => {
+                    localStorage.removeItem(key);
+                    console.log(`🗑️ Removed cached item: ${key}`);
+                });
+
+                // Clear sessionStorage entries that might contain old layer references  
+                const sessionKeysToRemove = [];
+                for (let i = 0; i < sessionStorage.length; i++) {
+                    const key = sessionStorage.key(i);
+                    if (key && (key.startsWith('layer_') || key.includes('symbology') || key.includes('style'))) {
+                        sessionKeysToRemove.push(key);
+                    }
+                }
+                sessionKeysToRemove.forEach(key => {
+                    sessionStorage.removeItem(key);
+                    console.log(`🗑️ Removed cached session item: ${key}`);
+                });
+
+                // Clear any global variables that might hold old layer references
+                if (typeof window.cachedLayerStyles !== 'undefined') {
+                    delete window.cachedLayerStyles;
+                    console.log('🗑️ Cleared global cachedLayerStyles');
+                }
+
+                console.log('✅ Old layer cache cleanup completed');
+            } catch (error) {
+                console.warn('Warning: Could not fully clear old layer caches:', error);
+            }
+        }
+
         // Load initial Aera.geojson data
         function loadInitialData() {
-            // Load local Aera.geojson data - this is a permanent, built-in layer
+            // Clear any cached references to old layers (specifically layer_1)
+            // This prevents loading of stale symbology from memory
+            clearOldLayerCaches();
+            localStorage.removeItem('layer_1_symbology');
+            sessionStorage.removeItem('layer_1_symbology');
+            
+            // For Aera layer specifically: Load symbology FIRST, then apply it during layer creation
+            // This eliminates the brief flash of default teal symbology
+            if (supabase && currentUser) {
+                console.log('🎨 Preloading Aera symbology to prevent flash...');
+                loadAeraWithCorrectSymbology();
+            } else {
+                // Fallback: Load without symbology preloading
+                loadAeraWithDefaultSymbology();
+            }
+            
+            // Load saved layers from Supabase after Aera is properly loaded
+            if (supabase) {
+                setTimeout(() => {
+                    loadLayersFromSupabase();
+                    
+                    // Populate filter layers after Supabase layers load
+                    setTimeout(() => {
+                        console.log('Supabase layers loaded, refreshing filter layers');
+                        populateFilterLayers();
+                    }, 500);
+                }, 700); // Increased delay to ensure Aera loads with correct symbology first
+            }
+        }
+
+        // Load Aera.geojson with preloaded correct symbology (prevents flash)
+        async function loadAeraWithCorrectSymbology() {
+            try {
+                console.log('🔍 Checking for stored Aera symbology before layer creation...');
+                
+                // First, get the stored symbology for Aera layer
+                const { data: aeraSymbology, error: symbologyError } = await supabase
+                    .from('layers')
+                    .select('style')
+                    .eq('user_id', currentUser.id)
+                    .eq('name', 'Aera')
+                    .single();
+
+                if (symbologyError && symbologyError.code !== 'PGRST116') {
+                    console.error('Error fetching Aera symbology:', symbologyError);
+                    loadAeraWithDefaultSymbology();
+                    return;
+                }
+
+                // Now load the GeoJSON file
+                const response = await fetch('Aera.geojson');
+                const geoData = await response.json();
+
+                if (aeraSymbology && aeraSymbology.style) {
+                    console.log('✅ Found stored Aera symbology, applying directly during layer creation');
+                    // Create layer with stored symbology immediately - NO FLASH
+                    addDataToMapWithPreloadedStyle(geoData, 'Aera.geojson', aeraSymbology.style, true);
+                } else {
+                    console.log('ℹ️ No stored Aera symbology found, using default');
+                    // Use default symbology
+                    addDataToMap(geoData, 'Aera.geojson', false, null, true);
+                }
+
+                // Populate filter layers after initial data is loaded
+                setTimeout(() => {
+                    console.log('Initial Aera data loaded, populating filter layers');
+                    populateFilterLayers();
+                }, 100);
+
+            } catch (error) {
+                console.error('Error in loadAeraWithCorrectSymbology:', error);
+                // Fallback to default loading
+                loadAeraWithDefaultSymbology();
+            }
+        }
+
+        // Fallback method for loading Aera with default symbology
+        function loadAeraWithDefaultSymbology() {
+            console.log('📥 Loading Aera.geojson with default symbology...');
+            
             fetch('Aera.geojson')
                 .then(response => response.json())
                 .then(data => {
@@ -2841,65 +4375,17 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                     console.error('Error loading Aera.geojson:', error);
                     // Continue without the initial data
                 });
-            
-            // Load saved layers from Supabase after a brief delay to ensure Aera loads first
-            if (supabase) {
-                setTimeout(() => {
-                    loadLayersFromSupabase();
-                    // Also check for Aera layer symbology after loading other layers
-                    checkAndApplyAeraSymbology();
-                    
-                    // Populate filter layers again after Supabase layers load
-                    setTimeout(() => {
-                        console.log('Supabase layers loaded, refreshing filter layers');
-                        populateFilterLayers();
-                    }, 500);
-                }, 500);
-            }
         }
 
-        // Check and apply Aera layer symbology from Supabase
-        async function checkAndApplyAeraSymbology() {
-            if (!supabase || !currentUser) {
-                console.log('Cannot check Aera symbology: Supabase not available or user not logged in');
-                return;
-            }
-
-            try {
-                console.log('Checking for stored Aera layer symbology...');
-                
-                const { data: aeraLayer, error } = await supabase
-                    .from('layers')
-                    .select('style')
-                    .eq('user_id', currentUser.id)
-                    .eq('name', 'Aera')
-                    .single();
-
-                if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-                    console.error('Error checking for Aera layer symbology:', error);
-                    return;
-                }
-
-                if (aeraLayer && aeraLayer.style) {
-                    console.log('Found stored Aera symbology, applying...');
-                    
-                    // Find the Aera layer
-                    const aeraLayerEntry = Array.from(layers.entries()).find(([layerId, layerInfo]) => 
-                        layerInfo.name === 'Aera'
-                    );
-                    
-                    if (aeraLayerEntry) {
-                        const [aeraLayerId] = aeraLayerEntry;
-                        applyStoredSymbology(aeraLayerId, aeraLayer.style);
-                        console.log('Applied stored symbology to Aera layer');
-                    }
-                } else {
-                    console.log('No stored Aera symbology found, using default');
-                }
-            } catch (error) {
-                console.error('Error checking Aera layer symbology:', error);
-            }
-        }
+        // REMOVED: checkAndApplyAeraSymbology function 
+        // This function has been replaced with proactive symbology loading in loadAeraWithCorrectSymbology()
+        // to prevent the flash of default symbology. The new approach loads the correct symbology
+        // BEFORE creating the layer, eliminating any visual flicker.
+        
+        // Note: This function is no longer needed because we now:
+        // 1. Preload Aera symbology from Supabase before layer creation
+        // 2. Apply the correct style immediately during L.geoJSON() creation
+        // 3. Clear any cached references to old layers (layer_1) that no longer exist
 
         // Update layers list in sidebar
         function updateLayersList() {
@@ -2966,7 +4452,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                         openSymbologyEditor(layerId);
                     } catch (error) {
                         console.error('Error opening symbology editor:', error);
-                        alert('Error opening symbology editor. Check console for details.');
+                        showError('Error opening symbology editor. Check console for details.', 'Symbology Error');
                     }
                 });
 
@@ -3330,7 +4816,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                         hideLayerContextMenu();
                     } catch (error) {
                         console.error('Error opening symbology editor:', error);
-                        alert('Error opening symbology editor. Check console for details.');
+                        showError('Error opening symbology editor. Check console for details.', 'Symbology Error');
                     }
                 }
             });
@@ -3405,14 +4891,14 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                     if (bounds && bounds.isValid()) {
                         map.fitBounds(bounds);
                     } else {
-                        alert('Unable to determine layer extent.');
+                        showWarning('Unable to determine layer extent.', 'Zoom Error');
                     }
                 } catch (error) {
                     console.error('Error zooming to layer:', error);
-                    alert('Error zooming to layer.');
+                    showError('Error zooming to layer.', 'Zoom Error');
                 }
             } else {
-                alert('Layer is not visible or not found.');
+                showError('Layer is not visible or not found.', 'Selection Error');
             }
         }
 
@@ -3467,7 +4953,8 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             }
 
             // Confirm deletion
-            if (confirm(`Are you sure you want to delete the layer "${layerName}"?`)) {
+            const confirmed = await showConfirm(`Are you sure you want to delete the layer "${layerName}"?`, 'Delete Layer');
+            if (confirmed) {
                 console.log(`Starting deletion process for layer:`, {
                     layerId: layerId,
                     layerName: layerName,
@@ -3491,7 +4978,8 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                             
                             if (!deleteResult.success) {
                                 console.error(`Database deletion failed:`, deleteResult.error);
-                                if (confirm(`Failed to delete layer from database: ${deleteResult.error}\n\nDo you want to delete it locally anyway?`)) {
+                                const fallbackConfirmed = await showConfirm(`Failed to delete layer from database: ${deleteResult.error}\n\nDo you want to delete it locally anyway?`, 'Database Deletion Failed');
+                                if (fallbackConfirmed) {
                                     console.log('User chose to delete locally despite database error');
                                 } else {
                                     return; // User cancelled, don't delete locally
@@ -3607,7 +5095,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             }
 
             // Prompt user for new name
-            const newName = prompt(`Enter new name for layer "${currentName}":`, currentName);
+            const newName = await showPrompt(`Enter new name for layer "${currentName}":`, currentName, 'Rename Layer');
             
             if (newName === null) {
                 // User cancelled
@@ -3837,7 +5325,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                     // Apply single symbol symbology
                     const style = {
                         color: symbologyData.stroke_color || '#ffffff',
-                        fillColor: symbologyData.fill_color || '#14b8a6',
+                        fillColor: symbologyData.fill_color || '#888888',
                         weight: symbologyData.stroke_weight || 2,
                         opacity: symbologyData.stroke_opacity || 1.0,
                         fillOpacity: symbologyData.fill_opacity || 0.7
@@ -3903,16 +5391,11 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                 color: '#ffffff',
                 weight: 2,
                 opacity: 1.0,
-                fillColor: '#14b8a6',
+                fillColor: '#888888',
                 fillOpacity: 0.7
             };
 
-            // Special default for Aera layer
-            if (layerId === 'aera-layer' || layerInfo.name === 'Aera') {
-                defaultStyle.fillColor = '#14b8a6'; // Teal
-                defaultStyle.color = '#0d7377'; // Dark teal
-                defaultStyle.weight = 1;
-            }
+            // No special defaults - use neutral styling for all layers
 
             layerInfo.layer.setStyle(defaultStyle);
             layerInfo.style = defaultStyle;
@@ -3969,17 +5452,13 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                         legendItem.className = 'legend-item flex items-center space-x-2';
                         
                         // Get fill and stroke colors from current layer style
-                        const fillColor = layerInfo.style?.fillColor || '#14b8a6';
+                        const fillColor = layerInfo.style?.fillColor || '#888888';
                         const strokeColor = layerInfo.style?.color || '#ffffff';
                         const strokeWidth = layerInfo.style?.weight || 2;
                         
-                        // Special handling for Aera layer defaults
+                        // Use style as-is without special handling
                         let displayFillColor = fillColor;
                         let displayStrokeColor = strokeColor;
-                        if (layerId === 'aera-layer' || layerInfo.name === 'Aera') {
-                            displayFillColor = fillColor !== '#14b8a6' ? fillColor : '#14b8a6'; // Teal
-                            displayStrokeColor = strokeColor !== '#ffffff' ? strokeColor : '#0d7377'; // Dark teal
-                        }
                         
                         legendItem.innerHTML = `
                             <div class="legend-color w-4 h-4 rounded border-2" 
@@ -4582,7 +6061,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             const { selectedLayer, selectedField, selectedOperator, filterValue } = currentFilterState;
             
             if (!selectedLayer || !selectedField || !selectedOperator) {
-                alert('Please complete all filter steps before applying.');
+                showWarning('Please complete all filter steps before applying.', 'Filter Incomplete');
                 return;
             }
             
@@ -4590,29 +6069,45 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             const operatorsNeedingValue = ['equal', 'not_equal', 'include', 'does_not_include', 'contains', 'does_not_contain', 'starts_with', 'does_not_start_with'];
             if (operatorsNeedingValue.includes(selectedOperator)) {
                 if (!filterValue || (Array.isArray(filterValue) && filterValue.length === 0)) {
-                    alert('Please select or enter a filter value.');
+                    showWarning('Please select or enter a filter value.', 'Filter Value Required');
                     return;
                 }
             }
 
             let originalData;
             let layerInfo;
+            let layerStyle = null;
             
             // Handle direct Aera loading
             if (selectedLayer === 'aera-direct' && window.aeraDirectData) {
                 originalData = window.aeraDirectData;
                 console.log('Using directly loaded Aera data for filtering');
+                
+                // Find the actual Aera layer in the layers map to get its style
+                layers.forEach((info, layerId) => {
+                    if (info.name === 'Aera' || info.name === 'Aera.geojson') {
+                        layerInfo = info;  // Use this for layer updates
+                        layerStyle = info.style;  // Get the original Aera style
+                        console.log('Found Aera layer style:', layerStyle);
+                    }
+                });
+                
+                if (!layerInfo) {
+                    showError('Original Aera layer not found. Cannot apply filter.', 'Filter Error');
+                    return;
+                }
             } else {
                 layerInfo = layers.get(selectedLayer);
                 if (!layerInfo) {
-                    alert('Selected layer not found. Please refresh and try again.');
+                    showError('Selected layer not found. Please refresh and try again.', 'Filter Error');
                     return;
                 }
                 originalData = layerInfo.originalData || layerInfo.data;
+                layerStyle = layerInfo.style;  // Use the layer's own style
             }
             
             if (!originalData || !originalData.features) {
-                alert('Layer data not available for filtering.');
+                showError('Layer data not available for filtering.', 'Filter Error');
                 return;
             }
             
@@ -4624,7 +6119,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             console.log(`🔍 Filtered ${originalData.features.length} features down to ${filteredFeatures.length}`);
             
             if (filteredFeatures.length === 0) {
-                alert('No features match the filter criteria.');
+                showAlert('No features match the filter criteria.', 'Filter Results');
                 return;
             }
             
@@ -4637,8 +6132,29 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             // Remove existing layer and add filtered layer
             map.removeLayer(layerInfo.layer);
             
+            // Ensure we have a valid style - preserve the original layer's styling approach
+            let styleToUse = layerStyle || layerInfo.style;
+            
+            // If still no style, try to extract from the original layer itself
+            if (!styleToUse && layerInfo.layer && layerInfo.layer.options) {
+                styleToUse = layerInfo.layer.options.style;
+            }
+            
+            // Final fallback to prevent any default blue styling
+            if (!styleToUse) {
+                console.warn('No style found for filtered layer, using Aera default style');
+                styleToUse = {
+                    color: '#ffffff',
+                    weight: 2,
+                    opacity: 1.0,
+                    fillColor: '#14b8a6',
+                    fillOpacity: 1.0
+                };
+            }
+            
             const filteredLayer = L.geoJSON(filteredData, {
-                style: layerInfo.style,
+                renderer: L.canvas(), // Force canvas rendering for leaflet-image export compatibility
+                style: styleToUse, // Use the preserved original style with proper fallbacks
                 onEachFeature: (feature, layer) => {
                     if (feature.properties) {
                         let popupContent = '<div class="modern-popup-container">';
@@ -4766,12 +6282,24 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
         // Clear the current filter
         function clearNewFilter() {
             if (!currentFilterState.activeFilter) {
-                alert('No active filter to clear.');
+                showAlert('No active filter to clear.', 'Filter Status');
                 return;
             }
             
             const layerId = currentFilterState.activeFilter.layerId;
-            const layerInfo = layers.get(layerId);
+            let layerInfo;
+            
+            // Handle aera-direct case
+            if (layerId === 'aera-direct') {
+                // Find the actual Aera layer in the layers map
+                layers.forEach((info, id) => {
+                    if (info.name === 'Aera' || info.name === 'Aera.geojson') {
+                        layerInfo = info;
+                    }
+                });
+            } else {
+                layerInfo = layers.get(layerId);
+            }
             
             if (!layerInfo) return;
             
@@ -4780,6 +6308,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             
             // Restore original data
             const originalLayer = L.geoJSON(layerInfo.originalData, {
+                renderer: L.canvas(), // Force canvas rendering for leaflet-image export compatibility
                 style: layerInfo.style,
                 onEachFeature: (feature, layer) => {
                     if (feature.properties) {
@@ -4934,7 +6463,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             const selectedGeoJSON = getSelectedFeaturesAsGeoJSON();
             
             if (!selectedGeoJSON || selectedGeoJSON.features.length === 0) {
-                alert('No features selected. Please use the Selection Tool to select features first.');
+                showWarning('No features selected. Please use the Selection Tool to select features first.', 'Selection Required');
                 return;
             }
             
@@ -4958,6 +6487,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             try {
                 // Create the layer on the map first
                 const newLayer = L.geoJSON(selectedGeoJSON, {
+                    renderer: L.canvas(), // Force canvas rendering for leaflet-image export compatibility
                     style: defaultStyle,
                     onEachFeature: (feature, layer) => {
                         // Add popup with feature properties
@@ -5011,11 +6541,11 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                 }
                 
                 // Show success message
-                alert(`✅ Filtered layer "${layerName}" created and saved!\n\nFeatures: ${selectedGeoJSON.features.length}\nLayer ID: ${layerId}`);
+                showSuccess(`Filtered layer "${layerName}" created and saved!\n\nFeatures: ${selectedGeoJSON.features.length}\nLayer ID: ${layerId}`, 'Layer Created');
                 
                 // Optionally prompt for rename
-                setTimeout(() => {
-                    if (confirm('Would you like to rename this layer now?')) {
+                setTimeout(async () => {
+                    if (await showConfirm('Would you like to rename this layer now?', 'Rename Layer')) {
                         renameLayer(layerId, layerName);
                     }
                 }, 1000);
@@ -5024,7 +6554,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                 
             } catch (error) {
                 console.error('❌ Failed to create filtered layer:', error);
-                alert(`❌ Failed to create filtered layer: ${error.message}`);
+                showError(`Failed to create filtered layer: ${error.message}`, 'Layer Creation Failed');
             }
         }
         
@@ -5248,6 +6778,88 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
         // Make debug function available globally (for console testing)
         window.debugFilterSystem = debugFilterSystem;
         
+        // **NEW: Debug function to check all layer renderers**
+        window.debugLayerRenderers = function() {
+            console.log('🔍 === LAYER RENDERER DEBUG ===');
+            console.log(`Total layers in map: ${layers.size}`);
+            
+            let canvasCount = 0;
+            let svgCount = 0;
+            let unknownCount = 0;
+            
+            layers.forEach((layerInfo, layerId) => {
+                const layer = layerInfo.layer;
+                
+                // Check renderer configuration
+                const hasRendererOption = !!layer.options.renderer;
+                const rendererType = layer.options.renderer ? layer.options.renderer.constructor.name : 'None';
+                const isCanvasOption = layer.options.renderer instanceof L.Canvas;
+                
+                // Check actual renderer instance
+                const actualRenderer = layer._renderer ? layer._renderer.constructor.name : 'None';
+                const isActualCanvas = layer._renderer instanceof L.Canvas;
+                
+                // Count renderer types
+                if (isCanvasOption || isActualCanvas) {
+                    canvasCount++;
+                } else if (layer._renderer instanceof L.SVG) {
+                    svgCount++;
+                } else {
+                    unknownCount++;
+                }
+                
+                console.log(`📋 Layer: "${layerInfo.name}" (${layerId})`);
+                console.log(`  - Renderer option: ${rendererType} (Canvas: ${isCanvasOption})`);
+                console.log(`  - Actual renderer: ${actualRenderer} (Canvas: ${isActualCanvas})`);
+                console.log(`  - Visible: ${layerInfo.visible}`);
+                console.log(`  - On map: ${map.hasLayer(layer)}`);
+                
+                // Special check for Aera layer
+                if (layerInfo.name === 'Aera') {
+                    console.log(`  🎯 AERA SPECIAL: This is the main Aera layer`);
+                    
+                    // Test if layer is canvas-ready for export
+                    const isExportReady = (isCanvasOption || isActualCanvas) && layerInfo.visible && map.hasLayer(layer);
+                    console.log(`  🚀 Export ready: ${isExportReady}`);
+                }
+                
+                console.log('---');
+            });
+            
+            console.log(`📊 Renderer Summary:`);
+            console.log(`  - Canvas: ${canvasCount}`);
+            console.log(`  - SVG: ${svgCount}`);
+            console.log(`  - Unknown: ${unknownCount}`);
+            console.log('=== END RENDERER DEBUG ===');
+            
+            return { canvasCount, svgCount, unknownCount };
+        };
+        
+        // **NEW: Quick function to test if Aera is canvas-rendered**
+        window.testAeraCanvas = function() {
+            console.log('🎯 Testing Aera layer canvas rendering...');
+            
+            let aeraLayer = null;
+            layers.forEach((layerInfo, layerId) => {
+                if (layerInfo.name === 'Aera') {
+                    aeraLayer = layerInfo.layer;
+                    console.log('✅ Found Aera layer');
+                    console.log('Layer added to map:', aeraLayer.options, 'Is using canvas?', aeraLayer.options.renderer instanceof L.Canvas);
+                    
+                    // Additional checks
+                    console.log('Actual renderer:', aeraLayer._renderer ? aeraLayer._renderer.constructor.name : 'None');
+                    console.log('Is actual renderer Canvas?', aeraLayer._renderer instanceof L.Canvas);
+                }
+            });
+            
+            if (!aeraLayer) {
+                console.error('❌ Aera layer not found!');
+                return false;
+            }
+            
+            return aeraLayer.options.renderer instanceof L.Canvas;
+        };
+        
         // Test filter system function 
         window.testFilterSystem = function() {
             console.log('Testing filter system...');
@@ -5341,7 +6953,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             const value = document.getElementById('filterValue').value.trim();
 
             if (!layerId || !field || !value) {
-                alert('Please fill in all filter criteria.');
+                showWarning('Please fill in all filter criteria.', 'Filter Incomplete');
                 return;
             }
 
@@ -5355,7 +6967,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             });
 
             if (filteredFeatures.length === 0) {
-                alert('No features match the filter criteria.');
+                showAlert('No features match the filter criteria.', 'Filter Results');
                 return;
             }
 
@@ -5369,6 +6981,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             map.removeLayer(layerInfo.layer);
             
             const filteredLayer = L.geoJSON(filteredData, {
+                renderer: L.canvas(), // Force canvas rendering for leaflet-image export compatibility
                 style: layerInfo.style,
                 onEachFeature: (feature, layer) => {
                     if (feature.properties) {
@@ -5411,6 +7024,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             
             // Restore original data
             const originalLayer = L.geoJSON(layerInfo.originalData, {
+                renderer: L.canvas(), // Force canvas rendering for leaflet-image export compatibility
                 style: layerInfo.style,
                 onEachFeature: (feature, layer) => {
                     if (feature.properties) {
@@ -5604,14 +7218,18 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                 zoom: map.getZoom(),
                 zoomControl: false,
                 attributionControl: false,
-                scrollWheelZoom: true,
+                scrollWheelZoom: true, // Default scroll wheel zoom behavior
                 dragging: true,
                 doubleClickZoom: true
             });
             
             // Add the same base layer as main map
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Esri, Maxar, Earthstar Geographics'
+                attribution: 'Esri, Maxar, Earthstar Geographics',
+                tileSize: 256,
+                updateWhenIdle: true,
+                updateWhenZooming: false,
+                keepBuffer: 2
             }).addTo(window.printMap);
             
             console.log('🗺️ Creating print map with layers:', layers.size);
@@ -5682,6 +7300,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                     
                     // Create the print layer with the appropriate style function
                     const printLayer = L.geoJSON(layerInfo.data, {
+                        renderer: L.canvas(), // Force canvas rendering for leaflet-image export compatibility
                         style: styleFunction,
                         onEachFeature: function(feature, layer) {
                             // No popups in print map to avoid rendering issues
@@ -5701,142 +7320,1020 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             setTimeout(() => {
                 if (window.printMap) {
                     window.printMap.invalidateSize();
+                    // Add Ctrl+right-click zoom box functionality to print map
+                    initializeZoomBox(window.printMap);
                 }
             }, 500);
         }
 
-        // Export layout as image with proper vector layer support
+        // Export layout as image using leaflet-image
         async function exportLayoutAsImage() {
-            console.log('📤 Starting enhanced layout export with vector layer support...');
+            console.log('📤 Starting layout export using leaflet-image...');
             
-            const canvas = document.getElementById('printCanvas');
-            const mapFrame = document.getElementById('mapFrame');
             const exportBtn = document.getElementById('exportLayoutBtn');
-            const title = document.getElementById('layoutTitle').value || 'Aera_Map_Layout';
+            const title = document.getElementById('layoutTitle').value || 'aera-map-export';
             
             // Show loading state
             exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Exporting...</span>';
             exportBtn.disabled = true;
             
             try {
-                // Ensure print map is ready
-                if (!window.printMap) {
-                    console.log('🔄 Print map not ready, creating...');
-                    createPrintMapInstance();
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                // Check if leaflet-image library is available
+                if (typeof leafletImage === 'undefined') {
+                    throw new Error('leaflet-image library is not loaded. Please include the leaflet-image script tag.');
                 }
                 
-                // Force map invalidation and wait for rendering
-                window.printMap.invalidateSize();
-                await waitForMapToLoad(window.printMap);
+                // Determine which map to export
+                let mapToExport = map; // Default to main map
                 
-                // Additional rendering cycle to ensure all layers are drawn
-                await new Promise(resolve => {
-                    window.printMap.once('moveend', () => {
-                        setTimeout(resolve, 1000); // Extra time for vector layer rendering
+                // **CRITICAL FIX: Backup original layer state before any export modifications**
+                console.log('💾 Backing up original layer state...');
+                const originalLayerBackup = new Map();
+                
+                // Create backup of all layer references BEFORE any modifications
+                layers.forEach((layerInfo, layerId) => {
+                    originalLayerBackup.set(layerId, {
+                        originalLayer: layerInfo.layer,
+                        originalVisible: layerInfo.visible,
+                        onMainMap: map.hasLayer(layerInfo.layer)
                     });
-                    window.printMap.setView(window.printMap.getCenter(), window.printMap.getZoom());
                 });
                 
-                // Get dimensions and positioning
-                const frameRect = mapFrame.getBoundingClientRect();
-                const canvasRect = canvas.getBoundingClientRect();
+                console.log(`💾 Backed up ${originalLayerBackup.size} layers`);
                 
-                const frameLeft = frameRect.left - canvasRect.left;
-                const frameTop = frameRect.top - canvasRect.top;
-                const frameWidth = frameRect.width;
-                const frameHeight = frameRect.height;
+                // Cleanup function to restore original state
+                const restoreOriginalLayers = () => {
+                    console.log('🔄 Restoring original layer state after export...');
+                    
+                    originalLayerBackup.forEach((backup, layerId) => {
+                        const layerInfo = layers.get(layerId);
+                        if (layerInfo && backup) {
+                            // Restore original layer reference if it was changed
+                            if (layerInfo.layer !== backup.originalLayer) {
+                                console.log(`🔄 Restoring original layer for "${layerInfo.name}"`);
+                                
+                                // Remove any replacement layer from main map
+                                if (map.hasLayer(layerInfo.layer) && layerInfo.layer !== backup.originalLayer) {
+                                    map.removeLayer(layerInfo.layer);
+                                }
+                                
+                                // Restore original layer reference
+                                layerInfo.layer = backup.originalLayer;
+                                
+                                // Restore to main map if it was originally there and visible
+                                if (backup.onMainMap && backup.originalVisible && !map.hasLayer(backup.originalLayer)) {
+                                    map.addLayer(backup.originalLayer);
+                                    console.log(`✅ Restored "${layerInfo.name}" to main map`);
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Force main map refresh
+                    map.invalidateSize();
+                    console.log('✅ Original layer state fully restored');
+                };
                 
-                // Get scale factors for high-resolution export
-                const actualCanvasWidth = parseInt(canvas.getAttribute('data-actual-width')) || 1980;
-                const actualCanvasHeight = parseInt(canvas.getAttribute('data-actual-height')) || 1080;
-                const displayWidth = canvasRect.width;
-                const displayHeight = canvasRect.height;
-                const scaleX = actualCanvasWidth / displayWidth;
-                const scaleY = actualCanvasHeight / displayHeight;
-                
-                console.log('📐 Export configuration:', {
-                    actualCanvas: `${actualCanvasWidth}×${actualCanvasHeight}`,
-                    displayCanvas: `${displayWidth}×${displayHeight}`,
-                    scale: `${scaleX}×${scaleY}`,
-                    frame: `${frameWidth}×${frameHeight} at ${frameLeft},${frameTop}`
-                });
-                
-                // Create high-resolution export canvas
-                const exportCanvas = document.createElement('canvas');
-                exportCanvas.width = actualCanvasWidth;
-                exportCanvas.height = actualCanvasHeight;
-                const ctx = exportCanvas.getContext('2d');
-                
-                // Fill with white background
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, actualCanvasWidth, actualCanvasHeight);
-                
-                // Add title if present
-                const titleValue = document.getElementById('layoutTitle').value;
-                if (titleValue && titleValue.trim()) {
-                    ctx.fillStyle = '#1f2937';
-                    ctx.font = `bold ${Math.round(24 * scaleX)}px Inter, Arial, sans-serif`;
-                    ctx.textAlign = 'left';
-                    ctx.fillText(titleValue.trim(), Math.round(16 * scaleX), Math.round(40 * scaleY));
+                // If print layout is open and print map exists, use that instead
+                if (window.printMap && !document.getElementById('printModal').classList.contains('hidden')) {
+                    console.log('🖨️ Using print layout map for export');
+                    mapToExport = window.printMap;
+                    
+                    // Ensure print map is ready and properly sized
+                    mapToExport.invalidateSize();
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                } else {
+                    console.log('🗺️ Using main map for export');
                 }
                 
-                // Method 1: Try custom canvas rendering first (most reliable for vector layers)
-                console.log('🎨 Using custom canvas rendering for vector layers...');
+                // **ENHANCED: Comprehensive layer validation and canvas rendering verification**
+                console.log('🔍 Analyzing layers for export compatibility...');
                 
-                // Create a temporary canvas for map content
-                const mapCanvas = document.createElement('canvas');
-                mapCanvas.width = frameWidth;
-                mapCanvas.height = frameHeight;
-                const mapCtx = mapCanvas.getContext('2d');
+                let totalLayers = 0;
+                let vectorLayers = 0;
+                let canvasLayers = 0;
+                let svgLayers = 0;
+                const layerDetails = [];
                 
-                // Render basemap tiles first
-                await renderBasemapToCanvas(mapCtx, window.printMap, frameWidth, frameHeight);
+                // **NEW: Pre-export layer inspection and canvas verification**
+                console.log('🔍 PRE-EXPORT LAYER INSPECTION:');
+                let geoJsonLayers = [];
                 
-                // Render vector layers on top
-                await renderVectorLayersToCanvas(mapCtx, window.printMap, frameWidth, frameHeight);
+                mapToExport.eachLayer(layer => {
+                    totalLayers++;
+                    
+                    // Enhanced GeoJSON layer detection
+                    const isGeoJSON = layer instanceof L.GeoJSON;
+                    const isVectorLayer = layer.feature || (layer._layers && !layer._url) || isGeoJSON;
+                    
+                    if (isVectorLayer || isGeoJSON) {
+                        vectorLayers++;
+                        
+                        // Track GeoJSON layers specifically
+                        if (isGeoJSON) {
+                            geoJsonLayers.push(layer);
+                        }
+                        
+                        // Check renderer type
+                        const isCanvas = layer.options && layer.options.renderer instanceof L.Canvas;
+                        const hasCanvasRenderer = layer._renderer && layer._renderer instanceof L.Canvas;
+                        
+                        if (isCanvas || hasCanvasRenderer) {
+                            canvasLayers++;
+                            console.log("Layer ready for export:", layer.options, "Canvas?", isCanvas || hasCanvasRenderer);
+                        } else {
+                            svgLayers++;
+                            console.warn("⚠️ SVG layer detected (may not export properly):", layer);
+                            
+                            // **CRITICAL FIX: Convert SVG layers to canvas before export**
+                            if (isGeoJSON && layer._renderer instanceof L.SVG) {
+                                console.log('🔄 Converting SVG layer to canvas for export...');
+                                try {
+                                    // Force canvas renderer
+                                    layer.options.renderer = L.canvas();
+                                    // Remove from map and re-add with canvas renderer
+                                    const layerData = layer.toGeoJSON();
+                                    const layerStyle = layer.options.style;
+                                    mapToExport.removeLayer(layer);
+                                    
+                                    const canvasLayer = L.geoJSON(layerData, {
+                                        renderer: L.canvas(),
+                                        style: layerStyle,
+                                        onEachFeature: layer.options.onEachFeature
+                                    }).addTo(mapToExport);
+                                    
+                                    console.log('✅ Successfully converted SVG layer to canvas');
+                                    canvasLayers++;
+                                    svgLayers--;
+                                } catch (conversionError) {
+                                    console.error('❌ Failed to convert SVG layer to canvas:', conversionError);
+                                }
+                            }
+                        }
+                        
+                        // Collect layer details for debugging
+                        layerDetails.push({
+                            type: isCanvas || hasCanvasRenderer ? 'Canvas' : 'SVG',
+                            isGeoJSON: isGeoJSON,
+                            hasRenderer: !!layer._renderer,
+                            rendererType: layer._renderer ? layer._renderer.constructor.name : 'None',
+                            options: layer.options || {}
+                        });
+                    }
+                });
                 
-                // Draw the completed map canvas onto the export canvas
-                const scaledFrameLeft = Math.round(frameLeft * scaleX);
-                const scaledFrameTop = Math.round(frameTop * scaleY);
-                const scaledFrameWidth = Math.round(frameWidth * scaleX);
-                const scaledFrameHeight = Math.round(frameHeight * scaleY);
+                console.log(`📊 Layer Analysis Results:`);
+                console.log(`  - Total layers: ${totalLayers}`);
+                console.log(`  - Vector layers: ${vectorLayers}`);
+                console.log(`  - GeoJSON layers: ${geoJsonLayers.length}`);
+                console.log(`  - Canvas-rendered: ${canvasLayers}`);
+                console.log(`  - SVG-rendered: ${svgLayers}`);
+                console.log(`  - Layer details:`, layerDetails);
                 
-                ctx.drawImage(mapCanvas, scaledFrameLeft, scaledFrameTop, scaledFrameWidth, scaledFrameHeight);
+                if (svgLayers > 0) {
+                    console.warn(`⚠️ Found ${svgLayers} SVG-rendered layers that may not appear in export!`);
+                }
                 
-                console.log('🗺️ Map rendered with custom canvas approach');
+                // **ENHANCED: Force complete map rendering and wait for layer stabilization**
+                console.log('🔄 Preparing map for export - ensuring all layers are properly rendered...');
                 
-                // Create and download the image
-                const link = document.createElement('a');
-                link.download = `${title.replace(/[^a-z0-9]/gi, '_')}.png`;
-                link.href = exportCanvas.toDataURL('image/png', 1.0);
-                link.click();
+                // Force map invalidation to trigger complete redraw
+                mapToExport.invalidateSize();
+                await new Promise(resolve => setTimeout(resolve, 200));
                 
-                console.log('✅ Layout exported successfully with vector layers');
+                // **NEW: Enhanced layer rendering preparation**
+                console.log('🎨 Forcing comprehensive layer rendering updates...');
                 
-                // Show success message
-                exportBtn.innerHTML = '<i class="fas fa-check"></i> <span>Exported!</span>';
-                setTimeout(() => {
+                // Process each GeoJSON layer specifically
+                for (const geoJsonLayer of geoJsonLayers) {
+                    console.log('🔧 Processing GeoJSON layer for export readiness...');
+                    
+                    // Force layer redraw
+                    if (geoJsonLayer.redraw && typeof geoJsonLayer.redraw === 'function') {
+                        geoJsonLayer.redraw();
+                    }
+                    
+                    // Force renderer update and ensure canvas readiness
+                    if (geoJsonLayer._renderer) {
+                        const renderer = geoJsonLayer._renderer;
+                        
+                        if (renderer._update) renderer._update();
+                        if (renderer._redraw) renderer._redraw();
+                        
+                        // Ensure canvas renderer is ready and has context
+                        if (renderer instanceof L.Canvas) {
+                            if (renderer._container && renderer._ctx) {
+                                console.log('✅ Canvas renderer ready and context available');
+                                
+                                // Force a complete canvas redraw
+                                if (renderer._drawing && typeof renderer._drawing.clear === 'function') {
+                                    renderer._drawing.clear();
+                                }
+                                
+                                // Trigger redraw of all layer elements
+                                geoJsonLayer.eachLayer(sublayer => {
+                                    if (sublayer._path) {
+                                        renderer._updatePath(sublayer);
+                                    }
+                                });
+                            } else {
+                                console.warn('⚠️ Canvas renderer missing container or context');
+                            }
+                        }
+                    }
+                    
+                    // Ensure layer is properly attached and visible
+                    if (!mapToExport.hasLayer(geoJsonLayer)) {
+                        console.warn('⚠️ GeoJSON layer not on map, re-adding...');
+                        mapToExport.addLayer(geoJsonLayer);
+                    }
+                }
+                
+                // Force redraw of ALL vector layers as fallback
+                mapToExport.eachLayer(layer => {
+                    if (layer.feature || (layer._layers && !layer._url)) {
+                        // Force layer redraw
+                        if (layer.redraw && typeof layer.redraw === 'function') {
+                            layer.redraw();
+                        }
+                        
+                        // Force renderer update
+                        if (layer._renderer) {
+                            if (layer._renderer._update) {
+                                layer._renderer._update();
+                            }
+                            if (layer._renderer._redraw) {
+                                layer._renderer._redraw();
+                            }
+                            // Ensure the renderer's canvas is ready
+                            if (layer._renderer._container && layer._renderer._ctx) {
+                                console.log('✅ Canvas renderer ready for layer');
+                            }
+                        }
+                    }
+                });
+                
+                // **ENHANCED: Extended wait time for complex layer rendering with multiple stages**
+                console.log('⏳ Multi-stage rendering wait for all layers...');
+                
+                // Stage 1: Initial render completion
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                // Stage 2: Canvas stabilization 
+                console.log('⏳ Canvas stabilization phase...');
+                await new Promise(resolve => setTimeout(resolve, 400));
+                
+                // Stage 3: Final render verification
+                console.log('⏳ Final render verification...');
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                // Final validation - check that all layers are still present and rendered
+                let finalVectorCount = 0;
+                let finalGeoJSONCount = 0;
+                mapToExport.eachLayer(layer => {
+                    if (layer.feature || (layer._layers && !layer._url)) {
+                        finalVectorCount++;
+                    }
+                    if (layer instanceof L.GeoJSON) {
+                        finalGeoJSONCount++;
+                    }
+                });
+                
+                console.log(`✅ Final pre-export validation:`);
+                console.log(`  - Vector layers ready: ${finalVectorCount}`);
+                console.log(`  - GeoJSON layers ready: ${finalGeoJSONCount}`);
+                console.log(`  - Expected GeoJSON layers: ${geoJsonLayers.length}`);
+                
+                // **SPECIAL DEBUG: Check Aera layer specifically**
+                console.log('🔍 AERA LAYER DEBUG - Checking Aera layer renderer configuration:');
+                let aeraLayerFound = false;
+                layers.forEach((layerInfo, layerId) => {
+                    if (layerInfo.name === 'Aera') {
+                        aeraLayerFound = true;
+                        const aeraLayer = layerInfo.layer;
+                        
+                        console.log(`🎯 Found Aera layer (ID: ${layerId}):`, {
+                            layerName: layerInfo.name,
+                            hasRenderer: !!aeraLayer.options.renderer,
+                            rendererType: aeraLayer.options.renderer ? aeraLayer.options.renderer.constructor.name : 'None',
+                            isCanvas: aeraLayer.options.renderer instanceof L.Canvas,
+                            actualRenderer: aeraLayer._renderer ? aeraLayer._renderer.constructor.name : 'None',
+                            isActualCanvas: aeraLayer._renderer instanceof L.Canvas,
+                            layerOptions: aeraLayer.options,
+                            visible: layerInfo.visible,
+                            onMap: mapToExport.hasLayer(aeraLayer)
+                        });
+                        
+                        // **CRITICAL: Ensure Aera layer is properly prepared for export**
+                        if (!mapToExport.hasLayer(aeraLayer)) {
+                            console.warn('⚠️ Aera layer not on export map! Re-adding...');
+                            mapToExport.addLayer(aeraLayer);
+                        }
+                        
+                        // Force Aera layer canvas rendering if needed
+                        if (!aeraLayer._renderer instanceof L.Canvas) {
+                            console.log('🔄 Forcing Aera layer to use canvas renderer...');
+                            try {
+                                aeraLayer.options.renderer = L.canvas();
+                                if (aeraLayer._renderer && aeraLayer._renderer instanceof L.SVG) {
+                                    // Need to recreate layer with canvas renderer FOR EXPORT ONLY
+                                    // **CRITICAL FIX: Do NOT modify original layer reference**
+                                    const aeraData = aeraLayer.toGeoJSON();
+                                    const aeraStyle = aeraLayer.options.style;
+                                    mapToExport.removeLayer(aeraLayer);
+                                    
+                                    const canvasAeraLayer = L.geoJSON(aeraData, {
+                                        renderer: L.canvas(),
+                                        style: aeraStyle
+                                    }).addTo(mapToExport);
+                                    
+                                    // **FIXED: DO NOT replace original layer reference**
+                                    // layerInfo.layer = canvasAeraLayer; // REMOVED - this was causing the bug
+                                    console.log('✅ Aera layer converted to canvas for export (original layer preserved)');
+                                }
+                            } catch (aeraConvertError) {
+                                console.error('❌ Failed to convert Aera to canvas:', aeraConvertError);
+                            }
+                        }
+                        
+                        // Force check if Aera is on map
+                        mapToExport.eachLayer(mapLayer => {
+                            if (mapLayer === aeraLayer || (layerInfo.layer && mapLayer === layerInfo.layer)) {
+                                console.log('✅ Aera layer IS present on map for export');
+                            }
+                        });
+                    }
+                });
+                
+                if (!aeraLayerFound) {
+                    console.warn('⚠️ No Aera layer found in layers collection!');
+                    
+                    // **FALLBACK: Try to find Aera layer directly on map**
+                    console.log('🔍 Searching for Aera layer directly on map...');
+                    mapToExport.eachLayer(mapLayer => {
+                        if (mapLayer instanceof L.GeoJSON) {
+                            // Check if this could be the Aera layer by examining its properties
+                            try {
+                                const layerData = mapLayer.toGeoJSON();
+                                if (layerData.features && layerData.features.length > 100) {
+                                    console.log('🎯 Found potential Aera layer on map (large feature set)');
+                                    console.log('Layer renderer:', mapLayer._renderer ? mapLayer._renderer.constructor.name : 'None');
+                                }
+                            } catch (error) {
+                                // Ignore error
+                            }
+                        }
+                    });
+                }
+                
+                // **ENHANCED: Cross-reference layers collection with actual map layers**
+                console.log('🔍 CROSS-REFERENCE: Checking layers collection vs map layers...');
+                let layersOnMap = 0;
+                let layersInCollection = 0;
+                
+                // **CRITICAL FIX: Clear export map and rebuild with all visible layers**
+                console.log('🔄 REBUILDING export map to ensure all layers are present...');
+                
+                // First, remove all GeoJSON layers from export map
+                const layersToRemove = [];
+                mapToExport.eachLayer(layer => {
+                    if (layer instanceof L.GeoJSON) {
+                        layersToRemove.push(layer);
+                    }
+                });
+                
+                layersToRemove.forEach(layer => {
+                    mapToExport.removeLayer(layer);
+                    console.log('🗑️ Removed existing layer from export map');
+                });
+                
+                // **Now re-add ALL visible layers from collection in correct order**
+                console.log('➕ Re-adding all visible layers to export map...');
+                let layersAdded = 0;
+                
+                // Count layers in collection that should be visible
+                for (const [layerId, layerInfo] of layers.entries()) {
+                    if (layerInfo.visible) {
+                        layersInCollection++;
+                        console.log(`📋 Adding visible layer "${layerInfo.name}" to export map...`);
+                        
+                        try {
+                            // **CRITICAL FIX: Always create fresh canvas layers for export**
+                            const layer = layerInfo.layer;
+                            
+                            if (layer instanceof L.GeoJSON) {
+                                console.log(`  🔄 Creating fresh canvas version of "${layerInfo.name}" for export...`);
+                                
+                                // Get the layer's data and styling
+                                const layerData = layer.toGeoJSON();
+                                const layerStyle = layer.options.style || layer.options;
+                                const onEachFeature = layer.options.onEachFeature;
+                                
+                                // **ALWAYS create a new canvas-rendered layer for export**
+                                const canvasLayer = L.geoJSON(layerData, {
+                                    renderer: L.canvas(),
+                                    style: layerStyle,
+                                    onEachFeature: onEachFeature,
+                                    // Copy other important options
+                                    weight: layer.options.weight,
+                                    opacity: layer.options.opacity,
+                                    color: layer.options.color,
+                                    fillColor: layer.options.fillColor,
+                                    fillOpacity: layer.options.fillOpacity,
+                                    dashArray: layer.options.dashArray
+                                });
+                                
+                                // **CRITICAL: Add the canvas layer to export map and wait for it to be ready**
+                                mapToExport.addLayer(canvasLayer);
+                                
+                                // **FORCE IMMEDIATE RENDER AND WAIT**
+                                await new Promise(resolve => {
+                                    // Give the layer time to attach renderer and render
+                                    setTimeout(() => {
+                                        // Force redraw after attachment
+                                        if (canvasLayer.redraw) {
+                                            canvasLayer.redraw();
+                                        }
+                                        resolve();
+                                    }, 100);
+                                });
+                                
+                                console.log(`  ✅ Added fresh canvas version of "${layerInfo.name}"`);
+                            } else {
+                                // Non-GeoJSON layer, add as-is
+                                mapToExport.addLayer(layer);
+                                console.log(`  ✅ Added non-GeoJSON layer "${layerInfo.name}"`);
+                            }
+                            
+                            layersAdded++;
+                        } catch (error) {
+                            console.error(`❌ Failed to add layer "${layerInfo.name}" to export map:`, error);
+                        }
+                    }
+                }
+                
+                // Count actual GeoJSON layers on map after rebuild
+                mapToExport.eachLayer(layer => {
+                    if (layer instanceof L.GeoJSON) {
+                        layersOnMap++;
+                    }
+                });
+                
+                console.log(`📊 Layer rebuild summary:`);
+                console.log(`  - Visible layers in collection: ${layersInCollection}`);
+                console.log(`  - Layers successfully added to export map: ${layersAdded}`);
+                console.log(`  - GeoJSON layers now on export map: ${layersOnMap}`);
+                
+                if (layersInCollection !== layersOnMap) {
+                    console.warn(`⚠️ MISMATCH: Collection has ${layersInCollection} visible layers but export map has ${layersOnMap} GeoJSON layers!`);
+                } else {
+                    console.log('✅ SUCCESS: All visible layers are now on the export map');
+                }
+                
+                // **FINAL VALIDATION: Confirm all layers are canvas-rendered**
+                console.log('✅ Final validation: Confirming all layers are canvas-rendered...');
+                let finalSVGCount = 0;
+                let finalCanvasCount = 0;
+                
+                mapToExport.eachLayer(layer => {
+                    if (layer instanceof L.GeoJSON) {
+                        // Check both options.renderer and actual _renderer
+                        const hasCanvasOption = layer.options && layer.options.renderer instanceof L.Canvas;
+                        const hasCanvasRenderer = layer._renderer && layer._renderer instanceof L.Canvas;
+                        const hasSVGRenderer = layer._renderer && layer._renderer instanceof L.SVG;
+                        
+                        if (hasCanvasOption || hasCanvasRenderer) {
+                            finalCanvasCount++;
+                            console.log(`✅ Canvas layer confirmed: ${hasCanvasOption ? 'options' : 'renderer'} canvas`);
+                        } else if (hasSVGRenderer) {
+                            finalSVGCount++;
+                            console.warn(`⚠️ STILL SVG: Layer still using SVG renderer!`, layer);
+                        } else {
+                            // Layer might be using default canvas renderer without explicit assignment
+                            finalCanvasCount++;
+                            console.log(`✅ Layer using default canvas renderer`);
+                        }
+                    }
+                });
+                
+                console.log(`📊 Export readiness: ${finalCanvasCount} canvas, ${finalSVGCount} SVG ${finalSVGCount > 0 ? '⚠️' : '✅'}`);
+                
+                // **FORCE COMPLETE MAP STABILIZATION**
+                console.log('🔄 Final map stabilization after rebuild...');
+                mapToExport.invalidateSize();
+                
+                // **CRITICAL: Allow time for all layers to get their renderers attached**
+                await new Promise(resolve => setTimeout(resolve, 1500)); // Extended wait for renderer attachment
+                
+                // **VERIFY RENDERER ATTACHMENT**
+                console.log('🔍 POST-REBUILD: Verifying renderer attachment...');
+                let layersWithRenderers = 0;
+                let layersWithCanvasRenderers = 0;
+                
+                mapToExport.eachLayer(layer => {
+                    if (layer instanceof L.GeoJSON) {
+                        const hasRenderer = !!layer._renderer;
+                        const hasCanvasRenderer = hasRenderer && layer._renderer instanceof L.Canvas;
+                        
+                        console.log(`📋 Layer renderer check: renderer=${hasRenderer}, canvas=${hasCanvasRenderer}`);
+                        
+                        if (hasRenderer) layersWithRenderers++;
+                        if (hasCanvasRenderer) layersWithCanvasRenderers++;
+                        
+                        // Force final redraw
+                        if (hasRenderer && layer.redraw) {
+                            layer.redraw();
+                        }
+                    }
+                });
+                
+                console.log(`📊 Renderer status: ${layersWithRenderers} with renderers, ${layersWithCanvasRenderers} with canvas renderers`);
+                
+                // Use leaflet-image to capture the map with all layers
+                console.log('📸 Capturing complete map with leaflet-image...');
+                
+                // **SIMPLIFIED AND RELIABLE: Use leaflet-image directly as primary method**
+                console.log('� Using leaflet-image for reliable all-layer export...');
+                
+                // **FINAL LAYER VERIFICATION: Ensure all visible layers are on the export map**
+                console.log('🔍 Final pre-export layer verification...');
+                
+                let layersAddedToMap = 0;
+                layers.forEach((layerInfo, layerId) => {
+                    if (layerInfo.visible) {
+                        if (!mapToExport.hasLayer(layerInfo.layer)) {
+                            console.warn(`⚠️ Visible layer "${layerInfo.name}" missing from export map! Re-adding...`);
+                            try {
+                                mapToExport.addLayer(layerInfo.layer);
+                                layersAddedToMap++;
+                                console.log(`✅ Re-added layer "${layerInfo.name}" to export map`);
+                            } catch (error) {
+                                console.error(`❌ Failed to re-add layer "${layerInfo.name}":`, error);
+                            }
+                        }
+                    }
+                });
+                
+                if (layersAddedToMap > 0) {
+                    console.log(`🔄 Re-added ${layersAddedToMap} missing layers, waiting for stabilization...`);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+                
+                try {
+                    // **ENHANCED: Force canvas rendering for all vector layers**
+                console.log('🎨 Ensuring all layers use canvas rendering for export compatibility...');
+                let canvasConversions = 0;
+                
+                layers.forEach((layerInfo, layerId) => {
+                    if (layerInfo.visible && layerInfo.layer instanceof L.GeoJSON) {
+                        // **CRITICAL: Check if layer is using SVG renderer - CONVERT ALL TO CANVAS**
+                        const currentRenderer = layerInfo.layer._renderer;
+                        const isCurrentlySVG = currentRenderer instanceof L.SVG;
+                        
+                        console.log(`  - Layer "${layerInfo.name}": ${isCurrentlySVG ? 'SVG (converting)' : 'Canvas (OK)'}`);
+                        
+                        // **CONVERT ALL SVG LAYERS TO CANVAS - NO EXCEPTIONS**
+                        if (isCurrentlySVG) {
+                            console.log(`� Converting SVG layer "${layerInfo.name}" to canvas...`);
+                            try {
+                                // Get layer data and style
+                                const layerData = layerInfo.layer.toGeoJSON();
+                                const layerStyle = layerInfo.layer.options.style;
+                                const onEachFeature = layerInfo.layer.options.onEachFeature;
+                                
+                                // Remove SVG version
+                                mapToExport.removeLayer(layerInfo.layer);
+                                
+                                // Create canvas version with same style
+                                const canvasLayer = L.geoJSON(layerData, {
+                                    renderer: L.canvas(),
+                                    style: layerStyle,
+                                    onEachFeature: onEachFeature
+                                }).addTo(mapToExport);
+                                
+                                // **FIXED: DO NOT replace original layer reference**
+                                // layerInfo.layer = canvasLayer; // REMOVED - this was causing the bug
+                                canvasConversions++;
+                                
+                                console.log(`✅ Successfully converted "${layerInfo.name}" to canvas (original preserved)`);
+                            } catch (conversionError) {
+                                console.error(`❌ Failed to convert "${layerInfo.name}" to canvas:`, conversionError);
+                            }
+                        }
+                    }
+                });
+                
+                // **ADDITIONAL SAFETY CHECK: Scan map directly for any remaining SVG layers**
+                console.log('🔍 Final scan: Checking for any remaining SVG layers on map...');
+                let additionalConversions = 0;
+                
+                mapToExport.eachLayer(layer => {
+                    if (layer instanceof L.GeoJSON && layer._renderer instanceof L.SVG) {
+                        // Check if this layer is already in our layer collection
+                        let layerInCollection = false;
+                        layers.forEach((layerInfo, layerId) => {
+                            if (layerInfo.layer === layer) {
+                                layerInCollection = true;
+                            }
+                        });
+                        
+                        if (!layerInCollection) {
+                            console.log('  ⚠️ Found SVG layer not in collection - converting...');
+                            try {
+                                const layerData = layer.toGeoJSON();
+                                const layerStyle = layer.options.style;
+                                const onEachFeature = layer.options.onEachFeature;
+                                
+                                mapToExport.removeLayer(layer);
+                                
+                                const canvasLayer = L.geoJSON(layerData, {
+                                    renderer: L.canvas(),
+                                    style: layerStyle,
+                                    onEachFeature: onEachFeature
+                                }).addTo(mapToExport);
+                                
+                                additionalConversions++;
+                                console.log('  ✅ Additional layer converted to canvas');
+                            } catch (error) {
+                                console.error('  ❌ Failed to convert additional layer:', error);
+                            }
+                        }
+                    }
+                });
+                
+                const totalConversions = canvasConversions + additionalConversions;
+                console.log(`🎯 Total SVG→Canvas conversions: ${totalConversions}`);
+                
+                if (totalConversions > 0) {
+                    console.log(`⏳ Waiting for all ${totalConversions} canvas layers to fully render...`);
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // Extended wait for canvas rendering
+                }
+                
+                // **FINAL VALIDATION: Ensure ALL layers are canvas-rendered**
+                console.log('✅ Final validation: Confirming all layers are canvas-rendered...');
+                let finalSVGCount = 0;
+                let finalCanvasCount = 0;
+                
+                mapToExport.eachLayer(layer => {
+                    if (layer instanceof L.GeoJSON) {
+                        // Check both options.renderer and actual _renderer
+                        const hasCanvasOption = layer.options && layer.options.renderer instanceof L.Canvas;
+                        const hasCanvasRenderer = layer._renderer && layer._renderer instanceof L.Canvas;
+                        const hasSVGRenderer = layer._renderer && layer._renderer instanceof L.SVG;
+                        
+                        if (hasCanvasOption || hasCanvasRenderer) {
+                            finalCanvasCount++;
+                            console.log(`✅ Canvas layer confirmed: ${hasCanvasOption ? 'options' : 'renderer'} canvas`);
+                        } else if (hasSVGRenderer) {
+                            finalSVGCount++;
+                            console.warn(`⚠️ STILL SVG: Layer still using SVG renderer!`, layer);
+                        } else {
+                            // Layer might be using default canvas renderer without explicit assignment
+                            finalCanvasCount++;
+                            console.log(`✅ Layer using default canvas renderer`);
+                        }
+                    }
+                });
+                
+                console.log(`📊 Export readiness: ${finalCanvasCount} canvas, ${finalSVGCount} SVG ${finalSVGCount > 0 ? '⚠️' : '✅'}`);
+                
+                // **FORCE COMPLETE MAP INVALIDATION AND STABILIZATION**
+                console.log('� Final map stabilization...');
+                mapToExport.invalidateSize();
+                await new Promise(resolve => setTimeout(resolve, 800));
+                
+                } catch (preparationError) {
+                    console.error('❌ Layer preparation failed:', preparationError);
+                    
+                    // **CRITICAL: Restore original layer state on error**
+                    restoreOriginalLayers();
+                    
+                    showError('Failed to prepare layers for export. Please try again.', 'Export Error');
                     exportBtn.innerHTML = '<i class="fas fa-download"></i> <span>Export Layout</span>';
                     exportBtn.disabled = false;
-                }, 2000);
+                    return;
+                }
+                
+                // **CRITICAL DEBUG: Check what leaflet-image actually sees**
+                console.log('🔍 PRE-CAPTURE DEBUG: Checking what leaflet-image will see...');
+                
+                // Force all layers to be visible and check their DOM elements
+                let visibleLayerElements = 0;
+                let canvasElements = 0;
+                let svgElements = 0;
+                
+                mapToExport.eachLayer(layer => {
+                    if (layer instanceof L.GeoJSON) {
+                        console.log(`🔍 Layer inspection:`, {
+                            hasRenderer: !!layer._renderer,
+                            rendererType: layer._renderer ? layer._renderer.constructor.name : 'None',
+                            hasContainer: !!(layer._renderer && layer._renderer._container),
+                            containerVisible: layer._renderer && layer._renderer._container ? 
+                                getComputedStyle(layer._renderer._container).display !== 'none' : false,
+                            opacity: layer.options.opacity || 1,
+                            zIndex: layer.options.zIndex || 0
+                        });
+                        
+                        // Check DOM elements
+                        if (layer._renderer && layer._renderer._container) {
+                            const container = layer._renderer._container;
+                            const rect = container.getBoundingClientRect();
+                            console.log(`📏 Layer DOM:`, {
+                                tagName: container.tagName,
+                                visible: rect.width > 0 && rect.height > 0,
+                                bounds: rect,
+                                style: container.style.cssText,
+                                computedStyle: {
+                                    display: getComputedStyle(container).display,
+                                    visibility: getComputedStyle(container).visibility,
+                                    opacity: getComputedStyle(container).opacity
+                                }
+                            });
+                            
+                            if (container.tagName === 'CANVAS') {
+                                canvasElements++;
+                            } else if (container.tagName === 'SVG') {
+                                svgElements++;
+                            }
+                            
+                            visibleLayerElements++;
+                        }
+                    }
+                });
+                
+                console.log(`📊 DOM Elements found: ${visibleLayerElements} total (${canvasElements} canvas, ${svgElements} svg)`);
+                
+                // **FORCE LAYER VISIBILITY**
+                console.log('💪 Forcing layer visibility and z-index...');
+                mapToExport.eachLayer(layer => {
+                    if (layer instanceof L.GeoJSON && layer._renderer && layer._renderer._container) {
+                        const container = layer._renderer._container;
+                        
+                        // Force visibility
+                        container.style.display = 'block';
+                        container.style.visibility = 'visible';
+                        container.style.opacity = '1';
+                        container.style.pointerEvents = 'auto';
+                        
+                        // Force high z-index
+                        container.style.zIndex = '1000';
+                        
+                        // For canvas elements, ensure they have content
+                        if (container.tagName === 'CANVAS') {
+                            const ctx = container.getContext('2d');
+                            if (ctx) {
+                                const imageData = ctx.getImageData(0, 0, container.width, container.height);
+                                let hasContent = false;
+                                for (let i = 3; i < imageData.data.length; i += 4) {
+                                    if (imageData.data[i] > 0) {
+                                        hasContent = true;
+                                        break;
+                                    }
+                                }
+                                console.log(`🎨 Canvas content check: ${hasContent ? 'HAS CONTENT' : 'EMPTY'} (${container.width}x${container.height})`);
+                            }
+                        }
+                    }
+                });
+                
+                // **FORCE MAP REFRESH AND REDRAW**
+                console.log('🔄 Final forced map refresh...');
+                mapToExport.invalidateSize();
+                
+                // Force redraw all layers
+                mapToExport.eachLayer(layer => {
+                    if (layer instanceof L.GeoJSON && layer.redraw) {
+                        layer.redraw();
+                    }
+                });
+                
+                // Extended wait to ensure everything is rendered
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // **PRIMARY EXPORT METHOD: Use leaflet-image directly**
+                console.log('📸 Attempting leaflet-image capture...');
+                leafletImage(mapToExport, function(err, canvas) {
+                    if (err) {
+                        console.error('❌ leaflet-image export failed:', err);
+                        
+                        // **CRITICAL: Restore original layer state on error**
+                        restoreOriginalLayers();
+                        
+                        // **ENHANCED: Provide detailed error information**
+                        console.log('🔍 Debugging export failure:');
+                        console.log('  - Map instance:', mapToExport);
+                        console.log('  - Map container:', mapToExport.getContainer());
+                        console.log('  - Map size:', mapToExport.getSize());
+                        console.log('  - Map bounds:', mapToExport.getBounds());
+                        console.log('  - Map layers count:', mapToExport.eachLayer ? Object.keys(mapToExport._layers || {}).length : 'unknown');
+                        console.log('  - Error details:', err);
+                        
+                        showError('Export failed. This might be due to layer rendering issues. Please try again or refresh the page.', 'Export Error');
+                        exportBtn.innerHTML = '<i class="fas fa-download"></i> <span>Export Layout</span>';
+                        exportBtn.disabled = false;
+                        return;
+                    }
+                        
+                        try {
+                            // **ENHANCED: Verify canvas has content and provide detailed analysis**
+                            if (!canvas || canvas.width === 0 || canvas.height === 0) {
+                                throw new Error('Generated canvas is empty or invalid');
+                            }
+                            
+                            console.log(`✅ Successfully captured map: ${canvas.width}x${canvas.height}px`);
+                            
+                            // **ENHANCED: Canvas content analysis**
+                            const ctx = canvas.getContext('2d');
+                            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                            const pixels = imageData.data;
+                            let nonTransparentPixels = 0;
+                            let totalPixels = canvas.width * canvas.height;
+                            let coloredPixels = 0;
+                            let uniqueColors = new Set();
+                            
+                            // Detailed pixel analysis
+                            for (let i = 0; i < pixels.length; i += 4) {
+                                const r = pixels[i];
+                                const g = pixels[i + 1];
+                                const b = pixels[i + 2];
+                                const a = pixels[i + 3];
+                                
+                                if (a > 0) {
+                                    nonTransparentPixels++;
+                                    coloredPixels++;
+                                    
+                                    // Track unique colors to detect vector content
+                                    const color = `${r},${g},${b}`;
+                                    uniqueColors.add(color);
+                                }
+                            }
+                            
+                            const contentPercentage = ((nonTransparentPixels / totalPixels) * 100).toFixed(2);
+                            console.log(`📊 DETAILED CANVAS ANALYSIS:`);
+                            console.log(`  - Canvas dimensions: ${canvas.width}x${canvas.height}`);
+                            console.log(`  - Total pixels: ${totalPixels.toLocaleString()}`);
+                            console.log(`  - Non-transparent pixels: ${nonTransparentPixels.toLocaleString()}`);
+                            console.log(`  - Content coverage: ${contentPercentage}%`);
+                            console.log(`  - Unique colors detected: ${uniqueColors.size}`);
+                            console.log(`  - Data URL size: ${Math.round(canvas.toDataURL().length / 1024)} KB`);
+                            
+                            // **CRITICAL: Check if we actually captured layers**
+                            if (contentPercentage < 1) {
+                                console.error('❌ EXPORT FAILED: Canvas appears empty or mostly transparent!');
+                                console.log('🔍 Empty canvas diagnostics:');
+                                console.log('  - Map bounds:', mapToExport.getBounds());
+                                console.log('  - Map zoom:', mapToExport.getZoom());
+                                console.log('  - Map center:', mapToExport.getCenter());
+                                console.log('  - Map container:', mapToExport.getContainer());
+                                
+                                // Check layers on map one more time
+                                let layersOnMap = 0;
+                                let renderersFound = 0;
+                                mapToExport.eachLayer(layer => {
+                                    layersOnMap++;
+                                    if (layer._renderer) renderersFound++;
+                                    
+                                    if (layer instanceof L.GeoJSON) {
+                                        console.log('  - GeoJSON layer status:', {
+                                            hasRenderer: !!layer._renderer,
+                                            rendererType: layer._renderer ? layer._renderer.constructor.name : 'None',
+                                            hasContainer: !!(layer._renderer && layer._renderer._container),
+                                            containerTagName: layer._renderer && layer._renderer._container ? 
+                                                layer._renderer._container.tagName : 'None'
+                                        });
+                                    }
+                                });
+                                
+                                console.log(`  - Total layers on map: ${layersOnMap}`);
+                                console.log(`  - Layers with renderers: ${renderersFound}`);
+                                
+                                // **CRITICAL: Restore original layer state on error**
+                                restoreOriginalLayers();
+                                
+                                showError('Export failed: No content was captured. The vector layers may not be rendering properly.', 'Export Failed');
+                                exportBtn.innerHTML = '<i class="fas fa-download"></i> <span>Export Layout</span>';
+                                exportBtn.disabled = false;
+                                return;
+                            }
+                            
+                            if (contentPercentage < 5) {
+                                console.warn(`⚠️ WARNING: Very low content coverage (${contentPercentage}%). Vector layers may be missing.`);
+                            }
+                            
+                            // Create and download the image
+                            canvas.toBlob(function(blob) {
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = `aera-web-map-export-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                URL.revokeObjectURL(url);
+                                
+                                console.log(`✅ EXPORT COMPLETED:`);
+                                console.log(`  - File size: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+                                console.log(`  - Content coverage: ${contentPercentage}%`);
+                                console.log(`  - Unique colors: ${uniqueColors.size}`);
+                                
+                                // Show appropriate message based on content
+                                if (contentPercentage > 10 && uniqueColors.size > 50) {
+                                    showSuccess('Map exported successfully with all layers!', 'Export Complete');
+                                } else if (contentPercentage > 5) {
+                                    showSuccess('Map exported - please verify all layers are visible.', 'Export Complete');
+                                } else {
+                                    showWarning('Map exported but may be missing some layers. Please check the result.', 'Export Complete');
+                                }
+                                
+                                // **CRITICAL: Restore original layer state after successful export**
+                                restoreOriginalLayers();
+                                
+                                exportBtn.innerHTML = '<i class="fas fa-download"></i> <span>Export Layout</span>';
+                                exportBtn.disabled = false;
+                            }, 'image/png', 1.0);
+                            
+                        } catch (canvasError) {
+                            console.error('❌ Canvas processing failed:', canvasError);
+                            
+                            // **CRITICAL: Restore original layer state on error**
+                            restoreOriginalLayers();
+                            
+                            showError(`Export failed: ${canvasError.message}. Please try again or refresh the page.`, 'Export Error');
+                            exportBtn.innerHTML = '<i class="fas fa-download"></i> <span>Export Layout</span>';
+                            exportBtn.disabled = false;
+                        }
+                    });
                 
             } catch (error) {
                 console.error('❌ Export failed:', error);
                 
-                // Fallback to html2canvas method
-                console.log('🔄 Falling back to html2canvas method...');
-                try {
-                    await fallbackHtml2CanvasExport(canvas, mapFrame, title, exportBtn);
-                } catch (fallbackError) {
-                    console.error('❌ Fallback export also failed:', fallbackError);
-                    alert('Export failed. Please try again or refresh the page.');
-                    
-                    exportBtn.innerHTML = '<i class="fas fa-download"></i> <span>Export Layout</span>';
-                    exportBtn.disabled = false;
-                }
+                // **CRITICAL: Restore original layer state on error**
+                restoreOriginalLayers();
+                
+                showError(`Export failed: ${error.message}. Please try again or refresh the page.`, 'Export Error');
+                exportBtn.innerHTML = '<i class="fas fa-download"></i> <span>Export Layout</span>';
+                exportBtn.disabled = false;
             }
         }
+        
+        // **SAFETY FUNCTION: Ensure all layers marked as visible are actually visible on the main map**
+        function ensureAllLayersVisible() {
+            console.log('🔍 Safety check: Ensuring all visible layers are on main map...');
+            
+            let layersRestored = 0;
+            let layersAlreadyVisible = 0;
+            
+            layers.forEach((layerInfo, layerId) => {
+                if (layerInfo.visible && layerInfo.layer) {
+                    // Check if layer is supposed to be visible but not on map
+                    if (!map.hasLayer(layerInfo.layer)) {
+                        console.log(`🔄 Restoring missing visible layer: "${layerInfo.name}"`);
+                        try {
+                            map.addLayer(layerInfo.layer);
+                            layersRestored++;
+                        } catch (error) {
+                            console.error(`❌ Failed to restore layer "${layerInfo.name}":`, error);
+                        }
+                    } else {
+                        layersAlreadyVisible++;
+                    }
+                }
+            });
+            
+            console.log(`✅ Layer visibility check complete: ${layersAlreadyVisible} already visible, ${layersRestored} restored`);
+            
+            if (layersRestored > 0) {
+                // Force map refresh if layers were restored
+                map.invalidateSize();
+            }
+        }
+        
+        // **DEBUG FUNCTION: Test export and layer restoration**
+        window.debugExportLayerFix = function() {
+            console.log('🧪 Testing export layer fix...');
+            console.log('📋 Current layer state before test:');
+            
+            let visibleBefore = 0;
+            let onMapBefore = 0;
+            
+            layers.forEach((layerInfo, layerId) => {
+                const isVisible = layerInfo.visible;
+                const isOnMap = map.hasLayer(layerInfo.layer);
+                
+                console.log(`  - ${layerInfo.name}: visible=${isVisible}, onMap=${isOnMap}`);
+                
+                if (isVisible) visibleBefore++;
+                if (isOnMap) onMapBefore++;
+            });
+            
+            console.log(`📊 Summary - Visible in list: ${visibleBefore}, On map: ${onMapBefore}`);
+            
+            // Run safety check
+            ensureAllLayersVisible();
+            
+            console.log('✅ Test complete - layers should now be restored');
+            return { visibleBefore, onMapBefore };
+        };
         
         // Render basemap tiles to canvas
         async function renderBasemapToCanvas(ctx, mapInstance, width, height) {
@@ -6412,7 +8909,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                     <div id="singleSymbolOptions" class="border-t border-gray-600 pt-4 mb-4">
                         <label class="block text-sm font-medium text-gray-300 mb-2">Fill Color</label>
                         <div class="flex items-center space-x-3 mb-4">
-                            <input type="color" id="singleFillColor" value="#14b8a6" 
+                            <input type="color" id="singleFillColor" value="#888888" 
                                    class="w-16 h-10 bg-transparent border border-gray-600 rounded cursor-pointer">
                             <span class="text-sm text-gray-400">Choose color for all features</span>
                         </div>
@@ -6745,36 +9242,10 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             if (layerInfo.classification && layerInfo.classification.field) {
                 const field = layerInfo.classification.field;
                 console.log('Initializing legend preview for existing classification field:', field);
+                const legendPreview = editorPanel.querySelector('#legendPreview');
                 generateLegendPreview(layerId, field, editorPanel);
                 legendPreview.classList.remove('hidden');
             }
-        }
-                const legendPreview = editorPanel.querySelector('#legendPreview');
-                const legendItems = editorPanel.querySelector('#legendItems');
-
-                if (field) {
-                    applyBtn.disabled = false;
-                    legendPreview.classList.remove('hidden');
-
-                    // Generate preview legend
-                    const features = layerInfo.data.features;
-                    const uniqueValues = [...new Set(features.map(f => f.properties[field]))];
-                    const colors = generateColors(uniqueValues.length);
-
-                    legendItems.innerHTML = '';
-                    uniqueValues.forEach((value, index) => {
-                        const color = colors[index];
-                        const legendItem = document.createElement('div');
-                        legendItem.className = 'flex items-center justify-between space-x-2';
-                        legendItem.innerHTML = `
-                            <div class="flex items-center space-x-2 flex-1 min-w-0">
-                                <div class="w-4 h-4 rounded border border-gray-500 flex-shrink-0" style="background-color: ${color}"></div>
-                                <span class="text-sm text-gray-300 truncate">${value || 'null'}</span>
-                            </div>
-                            <input type="color" value="${color}" class="w-6 h-6 rounded border-0 cursor-pointer color-picker" data-value="${value}">
-                        `;
-                        legendItems.appendChild(legendItem);
-                    });
         }
 
         // Apply single symbol styling to layer
@@ -7091,16 +9562,11 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                 color: '#ffffff',
                 weight: 2,
                 opacity: 1.0,
-                fillColor: '#14b8a6',
+                fillColor: '#888888',
                 fillOpacity: 0.7
             };
 
-            // Special default for Aera layer
-            if (layerId === 'aera-layer' || layerInfo.name === 'Aera') {
-                defaultStyle.fillColor = '#14b8a6'; // Teal
-                defaultStyle.color = '#0d7377'; // Dark teal
-                defaultStyle.weight = 1;
-            }
+            // No special defaults - use neutral styling for all layers
             
             layerInfo.layer.setStyle(defaultStyle);
             layerInfo.style = defaultStyle;
@@ -7244,6 +9710,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
 
             // Create new styled layer
             const newLayer = L.geoJSON(layerInfo.data, {
+                renderer: L.canvas(), // Force canvas rendering for leaflet-image export compatibility
                 style: (feature) => {
                     const value = feature.properties[field];
                     const color = colorMap[value] || '#14b8a6';
@@ -7306,6 +9773,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
 
             // Create new layer with default style
             const newLayer = L.geoJSON(layerInfo.data, {
+                renderer: L.canvas(), // Force canvas rendering for leaflet-image export compatibility
                 style: defaultStyle,
                 onEachFeature: (feature, layer) => {
                     if (feature.properties) {
@@ -7378,6 +9846,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
 
             // Create new styled layer
             const newLayer = L.geoJSON(layerInfo.data, {
+                renderer: L.canvas(), // Force canvas rendering for leaflet-image export compatibility
                 style: newStyle,
                 onEachFeature: (feature, layer) => {
                     if (feature.properties) {
@@ -7429,6 +9898,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
 
             // Create new styled layer
             const newLayer = L.geoJSON(layerInfo.data, {
+                renderer: L.canvas(), // Force canvas rendering for leaflet-image export compatibility
                 style: (feature) => {
                     const value = feature.properties[field];
                     const color = colorMap[value] || '#14b8a6';
@@ -7612,6 +10082,150 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             });
         }
 
+        // Initialize Ctrl+Right-Click Zoom Box functionality
+        function initializeZoomBox(mapInstance) {
+            const mapContainer = mapInstance.getContainer();
+            let isZoomBoxActive = false;
+            let startPoint = null;
+            let zoomBox = null;
+            
+            // Create zoom box element
+            function createZoomBox() {
+                const box = document.createElement('div');
+                box.style.position = 'absolute';
+                box.style.border = '2px dashed #0078d4';
+                box.style.backgroundColor = 'rgba(0, 120, 212, 0.1)';
+                box.style.pointerEvents = 'none';
+                box.style.zIndex = '1000';
+                box.style.display = 'none';
+                mapContainer.appendChild(box);
+                return box;
+            }
+            
+            // Initialize zoom box element
+            zoomBox = createZoomBox();
+            
+            // Handle right mouse button down with Ctrl
+            mapContainer.addEventListener('mousedown', function(e) {
+                // Only activate on right mouse button (2) with Ctrl key
+                if (e.button === 2 && e.ctrlKey) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    isZoomBoxActive = true;
+                    startPoint = { x: e.clientX, y: e.clientY };
+                    
+                    // Get container offset for positioning
+                    const rect = mapContainer.getBoundingClientRect();
+                    const containerX = e.clientX - rect.left;
+                    const containerY = e.clientY - rect.top;
+                    
+                    // Position zoom box at mouse location
+                    zoomBox.style.left = containerX + 'px';
+                    zoomBox.style.top = containerY + 'px';
+                    zoomBox.style.width = '0px';
+                    zoomBox.style.height = '0px';
+                    zoomBox.style.display = 'block';
+                    
+                    // Disable map dragging during zoom box operation
+                    mapInstance.dragging.disable();
+                    
+                    // Change cursor to crosshair
+                    mapContainer.style.cursor = 'crosshair';
+                }
+            });
+            
+            // Handle mouse move for zoom box drawing
+            mapContainer.addEventListener('mousemove', function(e) {
+                if (isZoomBoxActive && startPoint) {
+                    e.preventDefault();
+                    
+                    const rect = mapContainer.getBoundingClientRect();
+                    const currentX = e.clientX - rect.left;
+                    const currentY = e.clientY - rect.top;
+                    const startX = startPoint.x - rect.left;
+                    const startY = startPoint.y - rect.top;
+                    
+                    // Calculate box dimensions
+                    const left = Math.min(startX, currentX);
+                    const top = Math.min(startY, currentY);
+                    const width = Math.abs(currentX - startX);
+                    const height = Math.abs(currentY - startY);
+                    
+                    // Update zoom box position and size
+                    zoomBox.style.left = left + 'px';
+                    zoomBox.style.top = top + 'px';
+                    zoomBox.style.width = width + 'px';
+                    zoomBox.style.height = height + 'px';
+                }
+            });
+            
+            // Handle right mouse button up - complete zoom box
+            mapContainer.addEventListener('mouseup', function(e) {
+                if (e.button === 2 && isZoomBoxActive) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const rect = mapContainer.getBoundingClientRect();
+                    const endX = e.clientX - rect.left;
+                    const endY = e.clientY - rect.top;
+                    const startX = startPoint.x - rect.left;
+                    const startY = startPoint.y - rect.top;
+                    
+                    // Calculate minimum box size (prevent accidental tiny zooms)
+                    const minBoxSize = 10;
+                    const width = Math.abs(endX - startX);
+                    const height = Math.abs(endY - startY);
+                    
+                    if (width > minBoxSize && height > minBoxSize) {
+                        // Convert screen coordinates to map coordinates
+                        const corner1 = mapInstance.containerPointToLatLng([startX, startY]);
+                        const corner2 = mapInstance.containerPointToLatLng([endX, endY]);
+                        
+                        // Create bounds from the two corners
+                        const bounds = L.latLngBounds([corner1, corner2]);
+                        
+                        // Zoom to the drawn rectangle with smooth animation
+                        mapInstance.fitBounds(bounds, {
+                            animate: true,
+                            duration: 0.5,
+                            padding: [5, 5] // Small padding for better visual appearance
+                        });
+                    }
+                    
+                    // Clean up
+                    isZoomBoxActive = false;
+                    startPoint = null;
+                    zoomBox.style.display = 'none';
+                    
+                    // Re-enable map dragging
+                    mapInstance.dragging.enable();
+                    
+                    // Reset cursor
+                    mapContainer.style.cursor = '';
+                }
+            });
+            
+            // Handle context menu prevention during zoom box operation
+            mapContainer.addEventListener('contextmenu', function(e) {
+                if (e.ctrlKey || isZoomBoxActive) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
+            
+            // Clean up on mouse leave
+            mapContainer.addEventListener('mouseleave', function(e) {
+                if (isZoomBoxActive) {
+                    isZoomBoxActive = false;
+                    startPoint = null;
+                    zoomBox.style.display = 'none';
+                    mapInstance.dragging.enable();
+                    mapContainer.style.cursor = '';
+                }
+            });
+        }
+
         // Setup selection tool event listeners
         function setupSelectionListeners() {
             document.getElementById('activateSelectTool').addEventListener('click', activateSelectionTool);
@@ -7779,7 +10393,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
         function activateSelectionTool() {
             // Check if an active layer is selected
             if (!activeSelectionLayerId) {
-                alert('Please select a layer from the dropdown before activating the selection tool.');
+                showWarning('Please select a layer from the dropdown before activating the selection tool.', 'Layer Required');
                 return;
             }
             
@@ -8014,7 +10628,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             // Check if active layer is selected
             if (!activeSelectionLayerId || !layers.has(activeSelectionLayerId)) {
                 console.warn('❌ No valid active layer selected for selection');
-                alert('Please select a valid layer for selection.');
+                showError('Please select a valid layer for selection.', 'Selection Error');
                 updateSelectionInfo();
                 return;
             }
@@ -8022,7 +10636,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
             const activeLayerInfo = layers.get(activeSelectionLayerId);
             if (!activeLayerInfo.visible || !activeLayerInfo.layer) {
                 console.warn('❌ Active layer is not visible or has no layer object');
-                alert('The selected layer is not visible on the map.');
+                showError('The selected layer is not visible on the map.', 'Selection Error');
                 updateSelectionInfo();
                 return;
             }
@@ -8974,13 +11588,13 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                     // Validate file type
                     const ext = file.name.split('.').pop().toLowerCase();
                     if (!["geojson","kml","kmz"].includes(ext)) {
-                        alert('Invalid file type. Only .geojson, .kml, and .kmz files are allowed.');
+                        showError('Invalid file type. Only .geojson, .kml, and .kmz files are allowed.', 'File Type Error');
                         return;
                     }
                     
                     // Validate file size
                     if (file.size > maxSize) {
-                        alert('File size exceeds 50MB limit.');
+                        showError('File size exceeds 50MB limit.', 'File Too Large');
                         return;
                     }
 
@@ -9012,7 +11626,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                                             }
                                         });
                                         if (!kmlFile) {
-                                            alert('No KML file found inside KMZ.');
+                                            showError('No KML file found inside KMZ.', 'KMZ Error');
                                             return;
                                         }
                                         kmlFile.async('string').then(kmlText => {
@@ -9021,18 +11635,18 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                                                 const kmlDoc = parser.parseFromString(kmlText, 'text/xml');
                                                 const geojson = toGeoJSON.kml(kmlDoc);
                                                 if (!geojson || geojson.type !== 'FeatureCollection' || !Array.isArray(geojson.features)) {
-                                                    alert('Invalid or empty KML inside KMZ file.');
+                                                    showError('Invalid or empty KML inside KMZ file.', 'KMZ Error');
                                                     return;
                                                 }
                                                 addDataToMap(geojson, fileName);
                                             } catch (err) {
-                                                alert('Unable to read this file. Please upload a valid KMZ.');
+                                                showError('Unable to read this file. Please upload a valid KMZ.', 'KMZ Error');
                                             }
                                         }).catch(() => {
-                                            alert('Unable to read this file. Please upload a valid KMZ.');
+                                            showError('Unable to read this file. Please upload a valid KMZ.', 'KMZ Error');
                                         });
                                     }).catch(() => {
-                                        alert('Unable to read this file. Please upload a valid KMZ.');
+                                        showError('Unable to read this file. Please upload a valid KMZ.', 'KMZ Error');
                                     });
                                 }
                                 if (typeof JSZip === 'undefined') {
@@ -9046,11 +11660,11 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
                                 return;
                             }
                         } catch (err) {
-                            alert('Error parsing file. Please ensure it is a valid GeoJSON or KML/KMZ file.');
+                            showError('Error parsing file. Please ensure it is a valid GeoJSON or KML/KMZ file.', 'Parse Error');
                             return;
                         }
                         if (!geojson || !geojson.type || geojson.type !== 'FeatureCollection') {
-                            alert('Invalid or empty GeoJSON/KML file.');
+                            showError('Invalid or empty GeoJSON/KML file.', 'File Error');
                             return;
                         }
                         addDataToMap(geojson, file.name);
@@ -9467,7 +12081,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
 
                     if (validFiles.length === 0) {
                         if (files.length > 0) {
-                            alert('Please drop valid GeoJSON, KML, or KMZ files.');
+                            showError('Please drop valid GeoJSON, KML, or KMZ files.', 'Invalid File Type');
                         }
                         return;
                     }
@@ -9480,7 +12094,7 @@ CREATE POLICY "Users can delete own layers" ON layers FOR DELETE USING (auth.uid
 
                     if (validFiles.length !== files.length) {
                         const skipped = files.length - validFiles.length;
-                        alert(`${validFiles.length} file(s) processed successfully. ${skipped} file(s) skipped (invalid format).`);
+                        showSuccess(`${validFiles.length} file(s) processed successfully. ${skipped} file(s) skipped (invalid format).`, 'Files Processed');
                     } else if (validFiles.length > 0) {
                         console.log(`✅ All ${validFiles.length} files processed successfully`);
                     }
