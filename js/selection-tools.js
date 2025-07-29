@@ -287,8 +287,7 @@ function activateSelectionTool() {
         
         // Update button states 
         document.getElementById('activateSelectTool').innerHTML = '<i class="fas fa-draw-polygon mr-2"></i>Selection Active (Shift: Add | Ctrl: Remove)';
-        document.getElementById('activateSelectTool').classList.remove('bg-teal-600', 'hover:bg-teal-700');
-        document.getElementById('activateSelectTool').classList.add('bg-orange-600', 'hover:bg-orange-700');
+        document.getElementById('activateSelectTool').classList.add('glass-button-active');
         
         // Change cursor to crosshair
         window.map.getContainer().style.cursor = 'crosshair';
@@ -333,8 +332,7 @@ function deactivateSelectionTool() {
         
         // Update button states
         document.getElementById('activateSelectTool').innerHTML = '<i class="fas fa-draw-polygon mr-2"></i>Activate Selection Tool';
-        document.getElementById('activateSelectTool').classList.remove('bg-orange-600', 'hover:bg-orange-700');
-        document.getElementById('activateSelectTool').classList.add('bg-teal-600', 'hover:bg-teal-700');
+        document.getElementById('activateSelectTool').classList.remove('glass-button-active');
         
         // Restore original click handler
         document.getElementById('activateSelectTool').removeEventListener('click', deactivateSelectionTool);

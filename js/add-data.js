@@ -440,7 +440,7 @@ function convertCSVtoGeoJSON(csvContent) {
 }
 
 // Add Data to Map
-async function addDataToMap(geoData, fileName, options = {}) {
+async function addDataToMap(geoData, fileName, fromDatabase = false, databaseId = null, isPermanent = false, options = {}) {
     if (!geoData || !geoData.features || geoData.features.length === 0) {
         throw new Error('Invalid or empty GeoJSON data');
     }
@@ -497,6 +497,12 @@ async function addDataToMap(geoData, fileName, options = {}) {
         }
     }).addTo(map);
     
+    // Critical safeguard: Never save permanent layers to database
+    if (isPermanent || layerName === 'Aera' || layerName === 'Proximity Roads' || layerName.endsWith('_permanent')) {
+        console.log(`🚫 Detected permanent layer "${layerName}" - will not be saved to database`);
+        isPermanent = true;
+    }
+
     // Add to layers registry
     window.layers.set(layerId, {
         layer: newLayer,
@@ -505,8 +511,11 @@ async function addDataToMap(geoData, fileName, options = {}) {
         data: geoData,
         originalData: geoData,
         style: defaultStyle,
-        isPermanent: false,
-        isUserGenerated: true,
+        isPermanent: isPermanent,
+        isUserGenerated: !isPermanent, // Permanent layers are not user-generated
+        fromDatabase: fromDatabase,
+        databaseId: databaseId,
+        layerId: layerId,
         sourceType: options.source || 'upload',
         metadata: options.metadata || null,
         serviceUrl: options.serviceUrl || null,
@@ -525,19 +534,38 @@ async function addDataToMap(geoData, fileName, options = {}) {
         padding: [50, 50]
     });
     
-    // Save to Supabase if available
-    if (typeof saveLayerToSupabase === 'function') {
+    // Save to Supabase layers table (only for non-permanent layers)
+    if (!fromDatabase && !isPermanent && window.supabase && window.currentUser) {
         try {
-            await saveLayerToSupabase(layerId, layerName, geoData, {
-                source: options.source,
-                serviceUrl: options.serviceUrl,
-                metadata: options.metadata
-            });
+            console.log(`💾 Saving dynamic layer "${layerName}" to Supabase layers table...`);
+            const success = await saveDynamicLayerToDatabase(layerId, layerName, geoData);
+            if (success) {
+                console.log(`✅ Dynamic layer "${layerName}" saved to database successfully`);
+                // Update UI to reflect database status
+                updateLayersList();
+            } else {
+                console.warn(`⚠️ Failed to save dynamic layer "${layerName}" to database`);
+                showNotification(`Layer "${layerName}" created locally but could not be saved to database`, 'warning');
+            }
         } catch (error) {
-            console.warn('Failed to save layer to Supabase:', error);
-            // Continue anyway since the layer is added locally
+            console.error('Error saving dynamic layer to database:', error);
+            showNotification(`Layer "${layerName}" created but failed to save to database: ${error.message}`, 'warning');
         }
+    } else if (isPermanent) {
+        console.log(`✅ Permanent layer "${layerName}" loaded successfully (not saved to database)`);
+    } else if (fromDatabase) {
+        console.log(`✅ Database layer "${layerName}" loaded successfully`);
+    } else {
+        console.warn('⚠️ Supabase or user not available - layer not saved to database');
+        showNotification(`Layer "${layerName}" created locally only`, 'info');
     }
+    
+    // Update filter system with new layer
+    setTimeout(() => {
+        if (typeof populateFilterLayers === 'function') {
+            populateFilterLayers();
+        }
+    }, 100);
 }
 
 // Create new layer from GeoJSON data

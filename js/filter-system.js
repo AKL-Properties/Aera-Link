@@ -1,6 +1,77 @@
-// Stub for missing function
-function populateFilterFields() {
-  console.warn("populateFilterFields: not implemented yet");
+// Enhanced dynamic field population for all layer types
+function populateFilterFields(layerId) {
+    console.log(`🔄 Populating fields for layer: ${layerId}`);
+    const fieldSelect = document.getElementById('filterFieldSelect');
+    
+    if (!fieldSelect) {
+        console.error('❌ filterFieldSelect element not found');
+        return;
+    }
+    
+    fieldSelect.innerHTML = '<option value="">Loading fields...</option>';
+    
+    if (!layerId || !layers.has(layerId)) {
+        console.error(`❌ Layer ${layerId} not found in layers map`);
+        fieldSelect.innerHTML = '<option value="">Layer not found</option>';
+        return;
+    }
+    
+    const layerInfo = layers.get(layerId);
+    console.log(`📊 Layer info for ${layerId}:`, {
+        name: layerInfo.name,
+        isPermanent: layerInfo.isPermanent,
+        isUserGenerated: layerInfo.isUserGenerated,
+        isFilteredSelection: layerInfo.isFilteredSelection,
+        hasData: !!(layerInfo.data),
+        hasOriginalData: !!(layerInfo.originalData)
+    });
+    
+    // Get the appropriate data source
+    let geoData = layerInfo.originalData || layerInfo.data;
+    
+    if (!geoData || !geoData.features || geoData.features.length === 0) {
+        console.error(`❌ No valid GeoJSON data found for layer ${layerId}`);
+        fieldSelect.innerHTML = '<option value="">No data available</option>';
+        return;
+    }
+    
+    try {
+        // Extract field names from the first feature's properties
+        const firstFeature = geoData.features[0];
+        if (!firstFeature.properties) {
+            console.error(`❌ First feature has no properties for layer ${layerId}`);
+            fieldSelect.innerHTML = '<option value="">No attributes found</option>';
+            return;
+        }
+        
+        const fieldNames = Object.keys(firstFeature.properties);
+        console.log(`📋 Fields found for ${layerInfo.name}:`, fieldNames);
+        
+        if (fieldNames.length === 0) {
+            fieldSelect.innerHTML = '<option value="">No attributes found</option>';
+            return;
+        }
+        
+        // Clear dropdown and add default option
+        fieldSelect.innerHTML = '<option value="">Choose a field to filter by</option>';
+        
+        // Sort field names alphabetically for better UX
+        fieldNames.sort().forEach(fieldName => {
+            const option = document.createElement('option');
+            option.value = fieldName;
+            option.textContent = fieldName;
+            fieldSelect.appendChild(option);
+        });
+        
+        console.log(`✅ SUCCESS: ${fieldNames.length} fields added to dropdown for layer ${layerInfo.name}`);
+        
+        // Show the field section
+        document.getElementById('filterFieldSection').style.display = 'block';
+        
+    } catch (error) {
+        console.error(`❌ Error populating fields for layer ${layerId}:`, error);
+        fieldSelect.innerHTML = '<option value="">Error loading fields</option>';
+    }
 }
 /**
  * Filter System Module for Aéra Link WebGIS
@@ -122,17 +193,46 @@ function ensureAeraInFilterDropdown() {
     }
 }
 
-// Fallback function to load Aera data directly for filtering
-function tryLoadAeraDirectly() {
-    console.log('🔄 Trying to load Aera.geojson directly for filter...');
+// Fallback function to load Aera data from Supabase Storage for filtering
+async function tryLoadAeraDirectly() {
+    console.log('🔄 Trying to load Aera layer from Supabase Storage for filter...');
     
-    fetch('Aera.geojson')
-        .then(response => response.json())
-        .then(data => {
-            console.log('✅ Loaded Aera.geojson directly, adding to filter dropdown');
-            
+    if (!supabase || !currentUser) {
+        console.error('❌ Supabase or user not available for Aera layer loading');
+        return;
+    }
+    
+    try {
+        // Try common Aera filenames in Supabase Storage
+        const possibleFilenames = ['Aera.geojson', 'aera.geojson', 'AERA.geojson'];
+        let data = null;
+        
+        for (const filename of possibleFilenames) {
+            try {
+                const { data: signedUrlData, error: signedUrlError } = await supabase.storage
+                    .from('aeralink')
+                    .createSignedUrl(filename, 3600);
+
+                if (signedUrlError) {
+                    console.log(`⚠️ ${filename} not found in Supabase Storage`);
+                    continue;
+                }
+
+                const response = await fetch(signedUrlData.signedUrl);
+                if (response.ok) {
+                    data = await response.json();
+                    console.log(`✅ Loaded ${filename} from Supabase Storage for filtering`);
+                    break;
+                }
+            } catch (error) {
+                console.log(`⚠️ Failed to load ${filename}:`, error.message);
+                continue;
+            }
+        }
+        
+        if (data && data.features && data.features.length > 0) {
             const layerSelect = document.getElementById('filterLayerSelect');
-            if (layerSelect && data.features && data.features.length > 0) {
+            if (layerSelect) {
                 const option = document.createElement('option');
                 option.value = 'aera-direct';
                 option.textContent = 'Aera (Direct Load)';
@@ -142,15 +242,17 @@ function tryLoadAeraDirectly() {
                 window.aeraDirectData = data;
                 console.log('✅ Aera data stored for direct filter access');
             }
-        })
-        .catch(error => {
-            console.error('❌ Failed to load Aera.geojson directly:', error);
-        });
+        } else {
+            console.log('⚠️ No Aera layer found in Supabase Storage');
+        }
+    } catch (error) {
+        console.error('❌ Failed to load Aera layer from Supabase Storage:', error);
+    }
 }
 
-// Populate filter layer dropdown (Step 1)
+// Populate filter layer dropdown (Step 1) - Enhanced to include all layer types
 function populateFilterLayers() {
-    console.log('Populating filter layers...');
+    console.log('🔄 Populating filter layers (including all layer types)...');
     const layerSelect = document.getElementById('filterLayerSelect');
     
     if (!layerSelect) {
@@ -163,19 +265,35 @@ function populateFilterLayers() {
     let layerCount = 0;
     console.log(`Total layers available: ${layers.size}`);
     
-    layers.forEach((layerInfo, layerId) => {
-        console.log(`Checking layer ${layerId}:`, {
+    // Sort layers by type and name for better organization
+    const layerArray = Array.from(layers.entries()).sort(([aId, aInfo], [bId, bInfo]) => {
+        // First sort by type (permanent first, then user-generated, then filtered)
+        const aType = aInfo.isPermanent ? 0 : (aInfo.isUserGenerated ? 1 : 2);
+        const bType = bInfo.isPermanent ? 0 : (bInfo.isUserGenerated ? 1 : 2);
+        
+        if (aType !== bType) return aType - bType;
+        
+        // Then sort alphabetically by name
+        return aInfo.name.localeCompare(bInfo.name);
+    });
+    
+    layerArray.forEach(([layerId, layerInfo]) => {
+        console.log(`Checking layer ${layerId} (${layerInfo.name}):`, {
             name: layerInfo.name,
             visible: layerInfo.visible,
+            isPermanent: layerInfo.isPermanent,
+            isUserGenerated: layerInfo.isUserGenerated,
+            isFilteredSelection: layerInfo.isFilteredSelection,
+            sourceType: layerInfo.sourceType,
             hasData: !!(layerInfo.data),
             hasOriginalData: !!(layerInfo.originalData),
             hasFeatures: !!(layerInfo.data && layerInfo.data.features),
-            featureCount: layerInfo.data && layerInfo.data.features ? layerInfo.data.features.length : 0,
-            hasLayer: !!(layerInfo.layer)
+            featureCount: layerInfo.data && layerInfo.data.features ? layerInfo.data.features.length : 0
         });
         
+        // Include all visible layers with valid data, regardless of source
         if (layerInfo.visible && layerInfo.data) {
-            // Enhanced feature detection
+            // Enhanced feature detection for all layer types
             let features = [];
             
             if (layerInfo.data.type === 'FeatureCollection') {
@@ -194,25 +312,35 @@ function populateFilterLayers() {
                 if (firstFeature && firstFeature.properties && Object.keys(firstFeature.properties).length > 0) {
                     const option = document.createElement('option');
                     option.value = layerId;
-                    option.textContent = layerInfo.name;
+                    
+                    // Add layer type indicator to name
+                    let displayName = layerInfo.name;
+    
+                    
+                    option.textContent = displayName;
+                    option.dataset.layerType = layerInfo.isPermanent ? 'permanent' : 
+                                               (layerInfo.isFilteredSelection ? 'filtered' : 'uploaded');
+                    
                     layerSelect.appendChild(option);
                     layerCount++;
-                    console.log(`Added layer to filter dropdown: ${layerInfo.name} (${Object.keys(firstFeature.properties).length} fields)`);
+                    
+                    console.log(`✅ Added ${layerInfo.isPermanent ? 'permanent' : 
+                                            (layerInfo.isFilteredSelection ? 'filtered' : 'uploaded')} layer to filter dropdown: ${layerInfo.name} (${Object.keys(firstFeature.properties).length} fields)`);
                 } else {
-                    console.log(`Layer ${layerId} has no properties, skipping`);
+                    console.log(`⚠️ Layer ${layerId} has no properties, skipping`);
                 }
             } else {
-                console.log(`Layer ${layerId} has no features, skipping`);
+                console.log(`⚠️ Layer ${layerId} has no features, skipping`);
             }
         } else {
-            console.log(`Layer ${layerId} failed visibility/data checks:`, {
+            console.log(`❌ Layer ${layerId} failed checks:`, {
                 visible: layerInfo.visible,
                 hasData: !!(layerInfo.data)
             });
         }
     });
     
-    console.log(`Populated ${layerCount} layers in filter dropdown`);
+    console.log(`✅ Populated ${layerCount} layers in filter dropdown (all types included)`);
     
     if (layerCount === 0) {
         const noLayersOption = document.createElement('option');
@@ -233,10 +361,13 @@ function handleFilterLayerChange() {
     resetFilterSteps(['field', 'operator', 'value', 'actions']);
     
     if (layerId && layers.has(layerId)) {
-        console.log(`Layer ${layerId} exists in layers map, populating fields...`);
+        console.log(`✅ Layer ${layerId} exists in layers map, populating fields...`);
         const layerInfo = layers.get(layerId);
-        console.log('Layer info for field population:', {
+        console.log('📊 Layer info for field population:', {
             name: layerInfo.name,
+            isPermanent: layerInfo.isPermanent,
+            isUserGenerated: layerInfo.isUserGenerated,
+            isFilteredSelection: layerInfo.isFilteredSelection,
             hasData: !!(layerInfo.data),
             hasOriginalData: !!(layerInfo.originalData),
             visible: layerInfo.visible
@@ -245,71 +376,15 @@ function handleFilterLayerChange() {
         // Show field section first
         document.getElementById('filterFieldSection').style.display = 'block';
         
-        // FIXED: Check if this is Aera layer and use direct loading
-        if (layerInfo.name && layerInfo.name.toLowerCase().includes('aera')) {
-            console.log('🎯 Detected Aera layer - using direct Aera.geojson loading');
-            window.populateAeraFieldsDirect();
-        } else {
-            // For non-Aera layers, use the original method
-            populateFilterFields(layerId);
-        }
+        // Use the enhanced dynamic field population for ALL layer types
+        populateFilterFields(layerId);
+        
     } else {
-        console.log(`Layer ${layerId} does not exist or is invalid`);
+        console.log(`❌ Layer ${layerId} does not exist or is invalid`);
         console.log('Available layers:', Array.from(layers.keys()));
         document.getElementById('filterFieldSection').style.display = 'none';
     }
 }
- // NEW: Direct Aera field population function that bypasses layer system
-        window.populateAeraFieldsDirect = function() {
-            console.log('🎯 DIRECT Aera field population - bypassing layer system completely');
-            
-            const fieldSelect = document.getElementById('filterFieldSelect');
-            if (!fieldSelect) {
-                console.error('❌ filterFieldSelect element not found');
-                return;
-            }
-            
-            fieldSelect.innerHTML = '<option value="">Loading Aera fields...</option>';
-            
-            fetch('Aera.geojson')
-                .then(response => response.json())
-                .then(geoJsonData => {
-                    console.log('✅ Aera.geojson loaded directly');
-                    
-                    if (!geoJsonData.features || geoJsonData.features.length === 0) {
-                        throw new Error('No features found');
-                    }
-                    
-                    const properties = geoJsonData.features[0].properties;
-                    const fieldNames = Object.keys(properties);
-                    
-                    console.log('📋 Fields found:', fieldNames);
-                    
-                    // Clear dropdown and add default
-                    fieldSelect.innerHTML = '<option value="">Choose a field to filter by</option>';
-                    
-                    // Add each field
-                    fieldNames.forEach(fieldName => {
-                        const option = document.createElement('option');
-                        option.value = fieldName;
-                        option.textContent = fieldName;
-                        fieldSelect.appendChild(option);
-                    });
-                    
-                    console.log(`✅ SUCCESS: ${fieldNames.length} fields added to dropdown`);
-                    console.log('🔍 Dropdown now has', fieldSelect.options.length, 'options');
-                    
-                    // Store data for filtering
-                    window.aeraFilterData = geoJsonData;
-                    
-                    // Show the field section
-                    document.getElementById('filterFieldSection').style.display = 'block';
-                })
-                .catch(error => {
-                    console.error('❌ Failed to load Aera fields:', error);
-                    fieldSelect.innerHTML = '<option value="">Failed to load</option>';
-                });
-        };
 
 
 // Handle field selection change (Step 2 → Step 3)
@@ -883,19 +958,31 @@ async function createLayerFromSelection() {
             });
         }
         
-        // Save to Supabase if available
-        if (typeof saveLayerToSupabase === 'function') {
-            console.log('💾 Saving filtered layer to Supabase...');
-            try {
-                const success = await saveLayerToSupabase(layerId, layerName, selectedGeoJSON);
-                if (!success) {
-                    console.warn('⚠️ Supabase save failed, but layer created locally');
-                    await showNotification('Layer created locally but could not be saved to cloud storage.', 'warning');
+        // Save to Supabase layers table
+        try {
+            if (window.supabase && window.currentUser) {
+                console.log(`💾 Saving filtered layer "${layerName}" to Supabase layers table...`);
+                const success = await saveDynamicLayerToDatabase(layerId, layerName, selectedGeoJSON);
+                if (success) {
+                    console.log(`✅ Filtered layer "${layerName}" saved to database successfully`);
+                    // Update the layer info to reflect database status
+                    const layerInfo = window.layers.get(layerId);
+                    if (layerInfo) {
+                        layerInfo.fromDatabase = true;
+                    }
+                    // Update UI to reflect database status
+                    updateLayersList();
+                } else {
+                    console.warn(`⚠️ Failed to save filtered layer "${layerName}" to database`);
+                    showNotification(`Filtered layer "${layerName}" created locally but could not be saved to database`, 'warning');
                 }
-            } catch (error) {
-                console.error('Failed to save to Supabase:', error);
-                await showNotification('Layer created but could not be saved to cloud storage.', 'warning');
+            } else {
+                console.warn('⚠️ Supabase or user not available - filtered layer not saved to database');
+                showNotification(`Filtered layer "${layerName}" created locally only`, 'info');
             }
+        } catch (error) {
+            console.error('Error saving filtered layer to database:', error);
+            showNotification(`Filtered layer "${layerName}" created but failed to save to database: ${error.message}`, 'warning');
         }
         
         // Show success message

@@ -200,9 +200,17 @@ function setupLoginListeners() {
         if (result.success) {
             // Success - redirect to WebGIS
             const user = result.user;
-            document.getElementById('userEmail').textContent = result.user.email;
+            const userEmailElement = document.getElementById('userEmail');
+            if (userEmailElement) {
+                userEmailElement.textContent = result.user.email;
+            }
             hideLoginPage();
             initializeWebGIS();
+            
+            // Setup global escape handler after login
+            if (typeof setupGlobalEscapeHandler === 'function') {
+                setupGlobalEscapeHandler();
+            }
         } else {
             // Show error
             setLoginLoading(false);

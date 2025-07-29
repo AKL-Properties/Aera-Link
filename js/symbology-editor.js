@@ -1,6 +1,6 @@
 /**
- * Symbology Editor Module for Aéra Link WebGIS
- * Handles all symbology and styling controls including single symbol, categorical styling, color management, and style persistence
+ * Symbology Editor Module for Aéra Link WebGIS - Refactored for user_styles and shared_styles tables
+ * Handles all symbology and styling controls with user-specific and collaborative styling support
  */
 
 // === SYMBOLOGY EDITOR CORE FUNCTIONS ===
@@ -33,6 +33,10 @@ function openSymbologyEditor(layerId) {
     editorPanel.style.top = '100px';
     editorPanel.style.right = '20px';
     
+    // Get collaborative mode status
+    const collaborativeMode = window.collaborativeMode || false;
+    const modeText = collaborativeMode ? '🤝 Collaborative Mode' : '👤 Personal Mode';
+    
     // Get current layer opacity (stored as a value between 0 and 1)
     const currentOpacity = layerInfo.opacity || 1.0;
     const opacityPercent = Math.round(currentOpacity * 100);
@@ -49,6 +53,7 @@ function openSymbologyEditor(layerId) {
                 </button>
             </div>
             <div class="text-sm text-gray-300 mt-1">Layer: ${layerInfo.name}</div>
+            <div class="text-xs text-amber-300 mt-1">${modeText}</div>
         </div>
         
         <div class="symbology-editor-content">
@@ -118,11 +123,22 @@ function openSymbologyEditor(layerId) {
             
             <div class="flex space-x-2 mt-4">
                 <button id="applySymbology" class="flex-1 bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg transition-colors">
-                    Apply
+                    Apply & Save
                 </button>
                 <button id="resetSymbology" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors">
                     Reset
                 </button>
+            </div>
+            
+            ${collaborativeMode ? `
+            <div class="flex space-x-2 mt-4">
+                <button id="saveStyleAsShared" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors">
+                    <i class="fas fa-save mr-2"></i>Save Style
+                </button>
+            </div>` : ''}
+            
+            <div class="text-xs text-gray-400 mt-2 text-center">
+                Styles ${collaborativeMode ? 'shared with all users' : 'saved to your account'}
             </div>
         </div>
     `;
@@ -350,15 +366,32 @@ function setupSymbologyEditorListeners(editorPanel) {
         }
     });
     
-    // Apply button
-    applyBtn.addEventListener('click', function() {
+    // Apply button - Now includes saving to database
+    applyBtn.addEventListener('click', async function() {
         const symbologyType = symbologyTypeSelect.value;
+        
+        console.log(`💾 Applying and saving symbology for layer ${layerId}`);
+        
+        let symbologyData = null;
         
         if (symbologyType === 'single') {
             const fillColor = singleFillColor.value;
             const strokeColor = editorPanel.querySelector('#singleStrokeColor').value;
             const strokeWidth = editorPanel.querySelector('#singleStrokeWidth').value;
+            
+            // Apply the symbology to the map
             applySingleSymbolWithStroke(layerId, fillColor, strokeColor, strokeWidth);
+            
+            // Prepare data for database
+            symbologyData = {
+                symbology_type: 'single',
+                fill_color: fillColor,
+                stroke_color: strokeColor,
+                stroke_weight: parseFloat(strokeWidth),
+                fill_opacity: 0.7,
+                stroke_opacity: 1.0
+            };
+            
         } else if (symbologyType === 'categorical') {
             const field = classificationField.value;
             if (field) {
@@ -381,11 +414,51 @@ function setupSymbologyEditorListeners(editorPanel) {
                     // Use existing colors
                     console.log('Using existing custom colors from layer info');
                     applyCategoricalSymbologyWithCustomColors(layerId, field, layerInfo.classification.colorMap);
+                    customColorMap = layerInfo.classification.colorMap;
                 } else {
                     // Fall back to auto-generated colors
                     console.log('Using auto-generated colors');
                     applyCategoricalSymbologyWithStroke(layerId, field);
+                    // Get the generated color map from layer info
+                    const updatedLayerInfo = layers.get(layerId);
+                    customColorMap = updatedLayerInfo.classification?.colorMap;
                 }
+                
+                // Get stroke settings
+                const strokeColor = editorPanel.querySelector('#categoricalStrokeColor').value;
+                const strokeWidth = editorPanel.querySelector('#categoricalStrokeWidth').value;
+                
+                // Prepare categorical data for database
+                if (customColorMap) {
+                    const categories = Object.keys(customColorMap).map(value => ({
+                        value: value,
+                        color: customColorMap[value]
+                    }));
+                    
+                    symbologyData = {
+                        symbology_type: 'categorical',
+                        stroke_color: strokeColor,
+                        stroke_weight: parseFloat(strokeWidth),
+                        fill_opacity: 0.7,
+                        stroke_opacity: 1.0,
+                        classification_field: field,
+                        categories: categories,
+                        colorMap: customColorMap, // Include for local use
+                        categoricalField: field    // Include for compatibility
+                    };
+                }
+            }
+        }
+        
+        // Save symbology to the appropriate table
+        if (symbologyData) {
+            const layerName = layerInfo.name;
+            const success = await saveSymbologyToDatabase(layerName, symbologyData);
+            
+            if (success) {
+                showNotification(`Symbology saved successfully`, 'success');
+            } else {
+                showNotification(`Symbology applied but failed to save to database`, 'warning');
             }
         }
         
@@ -394,10 +467,100 @@ function setupSymbologyEditorListeners(editorPanel) {
     });
     
     // Reset button
-    editorPanel.querySelector('#resetSymbology').addEventListener('click', function() {
+    editorPanel.querySelector('#resetSymbology').addEventListener('click', async function() {
+        const layerName = layerInfo.name;
+        
+        // Reset layer symbology to default
         resetLayerSymbology(layerId);
+        
+        // Delete saved symbology from database
+        await deleteSymbologyFromDatabase(layerName);
+        
+        showNotification(`Layer symbology reset and cleared from database`, 'success');
+        
         editorPanel.remove();
     });
+    
+    // Save Style button (collaborative mode only)
+    const saveStyleBtn = editorPanel.querySelector('#saveStyleAsShared');
+    if (saveStyleBtn) {
+        saveStyleBtn.addEventListener('click', async function() {
+            // Prompt user for style name
+            const styleName = await showPrompt('Save Style', 'Enter a name for this style:', layerInfo.name + '_style');
+            
+            if (styleName && styleName.trim()) {
+                // Get current symbology data
+                const symbologyType = symbologyTypeSelect.value;
+                let symbologyData = null;
+                
+                if (symbologyType === 'single') {
+                    const fillColor = singleFillColor.value;
+                    const strokeColor = editorPanel.querySelector('#singleStrokeColor').value;
+                    const strokeWidth = editorPanel.querySelector('#singleStrokeWidth').value;
+                    
+                    symbologyData = {
+                        symbology_type: 'single',
+                        fill_color: fillColor,
+                        stroke_color: strokeColor,
+                        stroke_weight: parseFloat(strokeWidth),
+                        fill_opacity: 0.7,
+                        stroke_opacity: 1.0
+                    };
+                    
+                } else if (symbologyType === 'categorical') {
+                    const field = classificationField.value;
+                    if (field) {
+                        // Get custom colors from color pickers or existing data
+                        let customColorMap = null;
+                        const colorPickers = editorPanel.querySelectorAll('#legendItems .color-picker');
+                        if (colorPickers.length > 0) {
+                            customColorMap = {};
+                            colorPickers.forEach(picker => {
+                                const value = picker.dataset.value;
+                                const color = picker.value;
+                                customColorMap[value] = color;
+                            });
+                        } else if (layerInfo.classification && layerInfo.classification.colorMap) {
+                            customColorMap = layerInfo.classification.colorMap;
+                        }
+                        
+                        if (customColorMap) {
+                            const strokeColor = editorPanel.querySelector('#categoricalStrokeColor').value;
+                            const strokeWidth = editorPanel.querySelector('#categoricalStrokeWidth').value;
+                            
+                            const categories = Object.keys(customColorMap).map(value => ({
+                                value: value,
+                                color: customColorMap[value]
+                            }));
+                            
+                            symbologyData = {
+                                symbology_type: 'categorical',
+                                stroke_color: strokeColor,
+                                stroke_weight: parseFloat(strokeWidth),
+                                fill_opacity: 0.7,
+                                stroke_opacity: 1.0,
+                                classification_field: field,
+                                categories: categories,
+                                colorMap: customColorMap,
+                                categoricalField: field
+                            };
+                        }
+                    }
+                }
+                
+                if (symbologyData) {
+                    // Save to shared_styles table with style_name
+                    const success = await saveNamedSharedStyle(styleName.trim(), symbologyData);
+                    
+                    if (success) {
+                        showNotification(`Style "${styleName.trim()}" saved successfully`, 'success');
+                    } else {
+                        showNotification(`Failed to save style "${styleName.trim()}"`, 'error');
+                    }
+                }
+            }
+        });
+    }
     
     // Initialize legend preview if there's existing categorical classification
     if (layerInfo.classification && layerInfo.classification.field) {
@@ -408,6 +571,224 @@ function setupSymbologyEditorListeners(editorPanel) {
         legendPreview.classList.remove('hidden');
     }
 }
+
+// === DATABASE SYMBOLOGY FUNCTIONS ===
+
+// Save symbology to database (user_styles or shared_styles based on collaborative mode)
+async function saveSymbologyToDatabase(layerName, symbologyData) {
+    try {
+        if (!supabase || !currentUser) {
+            console.log('Supabase not available or user not logged in, skipping symbology save');
+            return false;
+        }
+
+        // Check collaborative mode flag
+        const collaborativeMode = window.collaborativeMode || false;
+        
+        console.log(`💾 Saving symbology to database for layer: ${layerName}`, {
+            collaborativeMode: collaborativeMode,
+            symbologyData: symbologyData
+        });
+        
+        if (collaborativeMode) {
+            // Save to shared_styles table
+            console.log(`🤝 Saving shared symbology for layer: ${layerName}`);
+            
+            const { data, error } = await supabase
+                .from('shared_styles')
+                .upsert({
+                    layer_id: layerName,
+                    style: symbologyData,
+                    updated_at: new Date().toISOString()
+                }, {
+                    onConflict: 'layer_id'
+                });
+
+            if (error) {
+                console.error('Error saving shared symbology:', error);
+                return false;
+            }
+            
+            console.log('✅ Shared symbology saved successfully');
+        } else {
+            // Save to user_styles table
+            console.log(`👤 Saving user-specific symbology for layer: ${layerName}`);
+            
+            const { data, error } = await supabase
+                .from('user_styles')
+                .upsert({
+                    user_id: currentUser.id,
+                    layer_id: layerName,
+                    style: symbologyData,
+                    updated_at: new Date().toISOString()
+                }, {
+                    onConflict: 'user_id,layer_id'
+                });
+
+            if (error) {
+                console.error('Error saving user symbology:', error);
+                return false;
+            }
+            
+            console.log('✅ User symbology saved successfully');
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Network error saving symbology to database:', error);
+        return false;
+    }
+}
+
+// Load symbology from database (user_styles or shared_styles based on collaborative mode)
+async function loadSymbologyFromDatabase(layerName) {
+    try {
+        if (!supabase || !currentUser) {
+            console.log('Supabase not available or user not logged in, skipping symbology load');
+            return null;
+        }
+
+        // Check collaborative mode flag
+        const collaborativeMode = window.collaborativeMode || false;
+        
+        console.log(`🔍 Loading symbology from database for layer: ${layerName}`, {
+            collaborativeMode: collaborativeMode
+        });
+        
+        let styleData = null;
+        
+        if (collaborativeMode) {
+            // Load from shared_styles table
+            console.log(`🤝 Loading shared symbology for layer: ${layerName}`);
+            const { data, error } = await supabase
+                .from('shared_styles')
+                .select('style')
+                .eq('layer_id', layerName)
+                .single();
+
+            if (error && error.code !== 'PGRST116') {
+                console.error('Error loading shared symbology:', error);
+                return null;
+            }
+            styleData = data;
+        } else {
+            // Load from user_styles table
+            console.log(`👤 Loading user-specific symbology for layer: ${layerName}`);
+            const { data, error } = await supabase
+                .from('user_styles')
+                .select('style')
+                .eq('user_id', currentUser.id)
+                .eq('layer_id', layerName)
+                .single();
+
+            if (error && error.code !== 'PGRST116') {
+                console.error('Error loading user symbology:', error);
+                return null;
+            }
+            styleData = data;
+        }
+
+        if (styleData && styleData.style) {
+            console.log(`✅ Retrieved ${collaborativeMode ? 'shared' : 'user'} symbology for ${layerName}`);
+            return styleData.style;
+        }
+
+        return null;
+    } catch (error) {
+        console.error('Network error loading symbology from database:', error);
+        return null;
+    }
+}
+
+// Save named shared style to shared_styles table with style_name
+async function saveNamedSharedStyle(styleName, symbologyData) {
+    try {
+        if (!supabase || !currentUser) {
+            console.log('Supabase not available or user not logged in, skipping named style save');
+            return false;
+        }
+
+        console.log(`💾 Saving named shared style: ${styleName}`, symbologyData);
+        
+        const { data, error } = await supabase
+            .from('shared_styles')
+            .insert({
+                layer_id: `named_style_${Date.now()}`, // Unique ID for named styles
+                style_name: styleName,
+                style: symbologyData,
+                created_by: currentUser.id,
+                updated_at: new Date().toISOString()
+            });
+
+        if (error) {
+            console.error('Error saving named shared style:', error);
+            return false;
+        }
+        
+        console.log('✅ Named shared style saved successfully');
+        return true;
+    } catch (error) {
+        console.error('Network error saving named shared style:', error);
+        return false;
+    }
+}
+
+// Delete symbology from database
+async function deleteSymbologyFromDatabase(layerName) {
+    try {
+        if (!supabase || !currentUser) {
+            console.log('Supabase not available or user not logged in, skipping symbology delete');
+            return false;
+        }
+
+        // Check collaborative mode flag
+        const collaborativeMode = window.collaborativeMode || false;
+        
+        console.log(`🗑️ Deleting symbology from database for layer: ${layerName}`, {
+            collaborativeMode: collaborativeMode
+        });
+        
+        if (collaborativeMode) {
+            // Delete from shared_styles table
+            console.log(`🤝 Deleting shared symbology for layer: ${layerName}`);
+            
+            const { error } = await supabase
+                .from('shared_styles')
+                .delete()
+                .eq('layer_id', layerName);
+
+            if (error) {
+                console.error('Error deleting shared symbology:', error);
+                return false;
+            }
+            
+            console.log('✅ Shared symbology deleted successfully');
+        } else {
+            // Delete from user_styles table
+            console.log(`👤 Deleting user-specific symbology for layer: ${layerName}`);
+            
+            const { error } = await supabase
+                .from('user_styles')
+                .delete()
+                .eq('user_id', currentUser.id)
+                .eq('layer_id', layerName);
+
+            if (error) {
+                console.error('Error deleting user symbology:', error);
+                return false;
+            }
+            
+            console.log('✅ User symbology deleted successfully');
+        }
+        
+        return true;
+    } catch (error) {
+        console.error('Network error deleting symbology from database:', error);
+        return false;
+    }
+}
+
+// === SYMBOLOGY APPLICATION FUNCTIONS ===
 
 // Apply single symbol styling with stroke controls
 function applySingleSymbolWithStroke(layerId, fillColor, strokeColor, strokeWidth) {
@@ -428,18 +809,6 @@ function applySingleSymbolWithStroke(layerId, fillColor, strokeColor, strokeWidt
     // Apply style to the layer
     layerInfo.layer.setStyle(newStyle);
     layerInfo.style = newStyle;
-    
-    // Save symbology settings to Supabase
-    const symbologyData = {
-        symbology_type: 'single',
-        fill_color: fillColor,
-        stroke_color: strokeColor,
-        stroke_weight: parseFloat(strokeWidth),
-        fill_opacity: 0.7,
-        stroke_opacity: 1.0
-    };
-    
-    saveSymbologyToSupabase(layerId, symbologyData);
     
     // Update legend
     updateLegend();
@@ -526,24 +895,6 @@ function applyCategoricalSymbologyWithStroke(layerId, field) {
         strokeWidth: strokeWidth
     };
     
-    // Save symbology settings to Supabase
-    const categories = uniqueValues.map(value => ({
-        value: value,
-        color: colorMap[value]
-    }));
-    
-    const symbologyData = {
-        symbology_type: 'categorical',
-        stroke_color: strokeColor,
-        stroke_weight: strokeWidth,
-        fill_opacity: 0.7,
-        stroke_opacity: 1.0,
-        classification_field: field,
-        categories: categories
-    };
-    
-    saveSymbologyToSupabase(layerId, symbologyData);
-    
     // Update legend
     updateLegend();
     
@@ -586,28 +937,10 @@ function applyCategoricalSymbologyWithCustomColors(layerId, field, customColorMa
         strokeWidth: strokeWidth
     };
     
-    // Save symbology settings to Supabase with custom colors
-    const categories = Object.keys(customColorMap).map(value => ({
-        value: value,
-        color: customColorMap[value]
-    }));
-    
-    const symbologyData = {
-        symbology_type: 'categorical',
-        stroke_color: strokeColor,
-        stroke_weight: strokeWidth,
-        fill_opacity: 0.7,
-        stroke_opacity: 1.0,
-        classification_field: field,
-        categories: categories
-    };
-    
-    saveSymbologyToSupabase(layerId, symbologyData);
-    
     // Update legend
     updateLegend();
     
-    console.log(`Categorical symbology with custom colors applied and saved successfully`);
+    console.log(`Categorical symbology with custom colors applied successfully`);
 }
 
 // Generate legend preview for categorical symbology
@@ -700,8 +1033,6 @@ function resetLayerSymbology(layerId) {
         fillColor: '#888888',
         fillOpacity: 0.7
     };
-
-    // No special defaults - use neutral styling for all layers
     
     layerInfo.layer.setStyle(defaultStyle);
     layerInfo.style = defaultStyle;
@@ -710,18 +1041,6 @@ function resetLayerSymbology(layerId) {
     if (layerInfo.classification) {
         delete layerInfo.classification;
     }
-    
-    // Save default symbology to Supabase
-    const symbologyData = {
-        symbology_type: 'single',
-        fill_color: defaultStyle.fillColor,
-        stroke_color: defaultStyle.color,
-        stroke_weight: defaultStyle.weight,
-        fill_opacity: defaultStyle.fillOpacity,
-        stroke_opacity: defaultStyle.opacity
-    };
-    
-    saveSymbologyToSupabase(layerId, symbologyData);
     
     // Update legend
     updateLegend();
@@ -995,12 +1314,29 @@ function applySymbology() {
     return;
 }
 
+// === COLLABORATIVE MODE TOGGLE FUNCTION ===
+
+// Toggle collaborative mode (add this to your global scripts or UI)
+function toggleCollaborativeMode() {
+    const currentMode = window.collaborativeMode || false;
+    window.collaborativeMode = !currentMode;
+    
+    const modeText = window.collaborativeMode ? 'Collaborative Mode ON - Styles shared with all users' : 'Personal Mode ON - Styles saved to your account';
+    showNotification(modeText, 'info');
+    
+    console.log(`Collaborative mode toggled: ${window.collaborativeMode}`);
+}
+
 // === EXPORT MODULE FUNCTIONS ===
 
 // Make functions globally available
 window.setupSymbologyListeners = setupSymbologyListeners;
 window.openSymbologyEditor = openSymbologyEditor;
 window.setupSymbologyEditorListeners = setupSymbologyEditorListeners;
+window.saveSymbologyToDatabase = saveSymbologyToDatabase;
+window.loadSymbologyFromDatabase = loadSymbologyFromDatabase;
+window.deleteSymbologyFromDatabase = deleteSymbologyFromDatabase;
+window.saveNamedSharedStyle = saveNamedSharedStyle;
 window.applySingleSymbolWithStroke = applySingleSymbolWithStroke;
 window.applyCategoricalSymbology = applyCategoricalSymbology;
 window.applyCategoricalSymbologyWithStroke = applyCategoricalSymbologyWithStroke;
@@ -1017,5 +1353,6 @@ window.makeDraggable = makeDraggable;
 window.setupOutsideClickClose = setupOutsideClickClose;
 window.toggleSymbologyOptions = toggleSymbologyOptions;
 window.applySymbology = applySymbology;
+window.toggleCollaborativeMode = toggleCollaborativeMode;
 
-console.log('✅ Symbology Editor module loaded successfully');
+console.log('✅ Refactored Symbology Editor module loaded - now using user_styles and shared_styles tables');

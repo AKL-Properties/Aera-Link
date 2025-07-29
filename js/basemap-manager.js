@@ -15,21 +15,25 @@ let originalLabels = null;
 // Initialize basemap definitions
 function initializeBasemaps() {
     basemaps = {
-        // OSM Basemaps
+        // OSM Basemaps (with CORS support for export)
         'osm-no-labels': L.tileLayer('https://tile.openstreetmap.bzh/ca/{z}/{x}/{y}.png', {
             maxZoom: 19,
+            crossOrigin: 'anonymous',
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles courtesy of <a href="https://www.openstreetmap.cat" target="_blank">Breton OpenStreetMap Team</a>'
         }),
         'osm-standard': L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: 'OpenStreetMap Labels',
-            maxZoom: 19
+            maxZoom: 19,
+            crossOrigin: 'anonymous'
         }),
         'osm-hot': L.tileLayer('https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', {
             maxZoom: 19,
+            crossOrigin: 'anonymous',
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/" target="_blank">Humanitarian OpenStreetMap Team</a> hosted by <a href="https://openstreetmap.fr/" target="_blank">OpenStreetMap France</a>'
         }),
         'osm-opnv': L.tileLayer('https://tileserver.memomaps.de/tilegen/{z}/{x}/{y}.png', {
             maxZoom: 18,
+            crossOrigin: 'anonymous',
             attribution: 'Map <a href="https://memomaps.de/">memomaps.de</a> <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }),
         'osm-dark': L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
@@ -332,9 +336,30 @@ function revertToOriginalBasemap() {
 }
 
 function setupMapContextMenu() {
+    console.log('🖱️ Setting up enhanced map context menu for basemap switching...');
+    
+    // Remove any existing context menu handlers to prevent conflicts
+    map.off('contextmenu');
+    
     map.on('contextmenu', function(e) {
-        // Check if the click was on a feature or empty map
-        if (!isClickOnFeature(e)) {
+        console.log('🖱️ Right-click detected at:', e.latlng);
+        
+        // Prevent default browser context menu
+        e.originalEvent.preventDefault();
+        e.originalEvent.stopPropagation();
+        
+        // Check if the click was on a feature or empty map (with relaxed detection)
+        const clickedOnFeature = isClickOnFeature(e);
+        console.log('🎯 Clicked on feature:', clickedOnFeature);
+        
+        // Show context menu for all right-clicks on empty areas
+        // Even if near features, allow context menu if not directly on them
+        if (!clickedOnFeature) {
+            console.log('📍 Showing basemap context menu');
+            showMapContextMenu(e.containerPoint);
+        } else {
+            console.log('📍 Showing basemap context menu (override - user preference)');
+            // Always show basemap menu unless explicitly on a popup
             showMapContextMenu(e.containerPoint);
         }
     });
@@ -420,10 +445,13 @@ function setupMapContextMenu() {
         });
     });
 
-    // Hide context menu when clicking elsewhere
+    // Hide context menu when clicking elsewhere (but don't interfere with layer context menus)
     document.addEventListener('click', function(e) {
         const mapContextMenu = e.target ? e.target.closest('#mapContextMenu') : null;
-        if (!mapContextMenu) {
+        const layerContextMenu = e.target ? e.target.closest('#layerContextMenu') : null;
+        
+        // Only hide map context menu if not clicking on any context menu
+        if (!mapContextMenu && !layerContextMenu) {
             hideMapContextMenu();
             revertToOriginalBasemap();
         }
@@ -434,19 +462,61 @@ function setupMapContextMenu() {
 }
 
 function isClickOnFeature(e) {
-    // Check if any visible layers contain features at this point
+    // More conservative feature detection - only block context menu for direct feature hits
     let hasFeature = false;
     
-    layers.forEach((layerInfo, layerId) => {
-        if (layerInfo.visible && layerInfo.layer) {
-            // Check if this layer has features at the clicked point
-            layerInfo.layer.eachLayer(function(featureLayer) {
-                if (featureLayer.getBounds && featureLayer.getBounds().contains(e.latlng)) {
-                    hasFeature = true;
+    try {
+        // Check if there's an active popup (user is interacting with a feature)
+        if (map._popup && map._popup.isOpen()) {
+            console.log('💬 Popup is open, treating as feature click');
+            return true;
+        }
+        
+        // Use a more precise feature detection method with smaller tolerance
+        if (window.layers && window.layers.size > 0) {
+            const tolerance = 10; // Reduced tolerance in meters
+            
+            window.layers.forEach((layerInfo, layerId) => {
+                if (layerInfo.visible && layerInfo.layer && !hasFeature) {
+                    try {
+                        layerInfo.layer.eachLayer(function(featureLayer) {
+                            if (hasFeature) return; // Short circuit if already found
+                            
+                            if (featureLayer.getLatLng) {
+                                // Point feature - check precise distance
+                                const distance = map.distance(e.latlng, featureLayer.getLatLng());
+                                if (distance < tolerance) {
+                                    hasFeature = true;
+                                    console.log(`🎯 Direct hit on point feature in layer: ${layerInfo.name}`);
+                                }
+                            } else if (featureLayer.getBounds) {
+                                // Polygon/line feature - check if click is inside bounds
+                                const bounds = featureLayer.getBounds();
+                                if (bounds.contains(e.latlng)) {
+                                    // Additional check: is it really close to the geometry?
+                                    const center = bounds.getCenter();
+                                    const distance = map.distance(e.latlng, center);
+                                    const maxDistance = Math.max(bounds.getNorth() - bounds.getSouth(), 
+                                                               bounds.getEast() - bounds.getWest()) * 111000 / 4; // Convert to meters
+                                    
+                                    if (distance < maxDistance) {
+                                        hasFeature = true;
+                                        console.log(`🎯 Direct hit on polygon/line feature in layer: ${layerInfo.name}`);
+                                    }
+                                }
+                            }
+                        });
+                    } catch (error) {
+                        console.warn('Error checking feature at click point:', error);
+                    }
                 }
             });
         }
-    });
+    } catch (error) {
+        console.error('Error in feature detection:', error);
+        // If error occurs, allow context menu
+        hasFeature = false;
+    }
     
     return hasFeature;
 }
@@ -454,27 +524,67 @@ function isClickOnFeature(e) {
 function showMapContextMenu(containerPoint) {
     const contextMenu = document.getElementById('mapContextMenu');
     
-    // Position the context menu at cursor location
+    if (!contextMenu) {
+        console.error('❌ Map context menu element not found! Check if #mapContextMenu exists in HTML.');
+        return;
+    }
+    
+    console.log(`📍 Positioning enhanced context menu at (${containerPoint.x}, ${containerPoint.y})`);
+    
+    // Hide any existing context menus first
+    hideMapContextMenu();
+    
+    // Position the context menu at cursor location with better positioning
     contextMenu.style.display = 'block';
+    contextMenu.style.position = 'fixed';
+    contextMenu.style.zIndex = '10000';
     contextMenu.style.left = containerPoint.x + 'px';
     contextMenu.style.top = containerPoint.y + 'px';
     
-    // Ensure menu stays within viewport
+    // Force a reflow to get accurate dimensions
+    contextMenu.offsetHeight;
+    
+    // Ensure menu stays within viewport with better calculations
     const rect = contextMenu.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
+    const padding = 10; // Padding from viewport edges
     
-    if (rect.right > viewportWidth) {
-        contextMenu.style.left = (containerPoint.x - rect.width) + 'px';
+    let adjustedX = containerPoint.x;
+    let adjustedY = containerPoint.y;
+    
+    if (rect.right > viewportWidth - padding) {
+        adjustedX = containerPoint.x - rect.width;
+        if (adjustedX < padding) {
+            adjustedX = padding;
+        }
+        console.log('↔️ Adjusted menu position to stay within viewport (horizontal)');
     }
-    if (rect.bottom > viewportHeight) {
-        contextMenu.style.top = (containerPoint.y - rect.height) + 'px';
+    
+    if (rect.bottom > viewportHeight - padding) {
+        adjustedY = containerPoint.y - rect.height;
+        if (adjustedY < padding) {
+            adjustedY = padding;
+        }
+        console.log('↕️ Adjusted menu position to stay within viewport (vertical)');
     }
+    
+    contextMenu.style.left = adjustedX + 'px';
+    contextMenu.style.top = adjustedY + 'px';
+    
+    // Add animation class for smooth appearance
+    contextMenu.classList.add('context-menu-active');
+    
+    console.log('✅ Enhanced context menu is now visible and positioned correctly');
 }
 
 function hideMapContextMenu() {
     const contextMenu = document.getElementById('mapContextMenu');
-    contextMenu.style.display = 'none';
+    if (contextMenu) {
+        contextMenu.style.display = 'none';
+        contextMenu.classList.remove('context-menu-active');
+        console.log('🙈 Enhanced context menu hidden');
+    }
 }
 
 // Initialize basemap system for given map instance
@@ -484,18 +594,32 @@ function initBasemaps(mapInstance) {
         return;
     }
     
+    console.log('🗺️ Initializing basemap system...');
+    
     // Set global map reference
     window.map = mapInstance;
     
     // Initialize basemap definitions
     initializeBasemaps();
+    console.log(`Loaded ${Object.keys(basemaps).length} basemap providers`);
     
     // Set initial basemap to Google Satellite (no labels) as default
-    currentBasemap = basemaps['google-satellite'];
+    currentBasemap = basemaps['carto-dark-matter'];
     currentBasemap.addTo(mapInstance);
+    console.log('🛰️ Set default basemap to Google Satellite');
     
     // Setup map context menu for basemap switching
     setupMapContextMenu();
+    
+    // Verify context menu exists
+    const contextMenu = document.getElementById('mapContextMenu');
+    if (contextMenu) {
+        console.log('Basemap context menu found and ready');
+    } else {
+        console.error('Context menu element #mapContextMenu not found in DOM');
+    }
+    
+    console.log('Basemap system initialization complete');
 }
 
 // Export functions to global scope for compatibility
