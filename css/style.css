@@ -299,6 +299,57 @@ body {
     outline: none !important;
 }
 
+/* Fix dropdown options styling to match dark theme */
+.glass-section select option,
+select option,
+#filterLayerSelect option,
+#filterFieldSelect option,
+#filterOperatorSelect option,
+#filterSingleValueSelect option {
+    background-color: var(--pure-black) !important;
+    color: var(--light-gray) !important;
+    border: none !important;
+    padding: 8px 12px !important;
+}
+
+.glass-section select option:hover,
+select option:hover,
+#filterLayerSelect option:hover,
+#filterFieldSelect option:hover,
+#filterOperatorSelect option:hover,
+#filterSingleValueSelect option:hover {
+    background-color: rgba(0, 255, 231, 0.2) !important;
+    color: var(--neon-teal) !important;
+}
+
+.glass-section select option:checked,
+select option:checked,
+#filterLayerSelect option:checked,
+#filterFieldSelect option:checked,
+#filterOperatorSelect option:checked,
+#filterSingleValueSelect option:checked {
+    background-color: rgba(0, 255, 231, 0.3) !important;
+    color: var(--neon-teal) !important;
+}
+
+/* Ensure filter dropdowns have proper dark theme styling */
+#filterLayerSelect,
+#filterFieldSelect,
+#filterOperatorSelect,
+#filterSingleValueSelect {
+    background-color: var(--pure-black) !important;
+    color: var(--light-gray) !important;
+    border: 1px solid rgba(0, 255, 231, 0.3) !important;
+}
+
+#filterLayerSelect:focus,
+#filterFieldSelect:focus,
+#filterOperatorSelect:focus,
+#filterSingleValueSelect:focus {
+    border-color: var(--neon-teal) !important;
+    box-shadow: var(--neon-glow-sm) !important;
+}
+
 /* APP SECTIONS */
 .app-section {
     display: none !important;

@@ -208,6 +208,63 @@ function initializeSelectionTools(map) {
     };
 }
 
+// Initialize layer dropdown with current layers
+function initializeLayerDropdown() {
+    // Try to use the official update function from layer-manager.js first
+    if (typeof window.updateSelectionLayerDropdown === 'function') {
+        try {
+            window.updateSelectionLayerDropdown();
+            console.log('Selection dropdown initialized using updateSelectionLayerDropdown');
+            return;
+        } catch (error) {
+            console.warn('Error calling updateSelectionLayerDropdown, using fallback:', error);
+        }
+    }
+    
+    // Fallback: manually populate the dropdown if the function isn't available
+    const activeLayerSelect = document.getElementById('activeLayerSelect');
+    if (!activeLayerSelect) {
+        console.error('activeLayerSelect element not found');
+        return;
+    }
+    
+    // Clear existing options
+    activeLayerSelect.innerHTML = '<option value="">Select a layer first</option>';
+    
+    // Check if window.layers exists and has visible layers
+    if (window.layers && window.layers.size > 0) {
+        let visibleLayerCount = 0;
+        
+        // Add visible layers to dropdown
+        window.layers.forEach((layerInfo, layerId) => {
+            if (layerInfo && layerInfo.visible) {
+                visibleLayerCount++;
+                const option = document.createElement('option');
+                option.value = layerId;
+                option.textContent = layerInfo.name || `Layer ${layerId}`;
+                activeLayerSelect.appendChild(option);
+            }
+        });
+        
+        console.log(`Selection dropdown fallback populated with ${visibleLayerCount} visible layers`);
+        
+        // Update button states based on available layers
+        const activateBtn = document.getElementById('activateSelectTool');
+        if (activateBtn) {
+            if (visibleLayerCount > 0) {
+                // Keep disabled until user selects a layer, but remove visual disabled state
+                activateBtn.disabled = true;
+            } else {
+                // No layers available
+                activateBtn.disabled = true;
+                activateBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+        }
+    } else {
+        console.log('No layers available for selection dropdown');
+    }
+}
+
 // Setup selection tool event listeners
 function setupSelectionListeners() {
     document.getElementById('activateSelectTool').addEventListener('click', activateSelectionTool);
@@ -254,6 +311,12 @@ function setupSelectionListeners() {
             }
         }
     });
+    
+    // Initial population of the layer dropdown with existing layers
+    // Use setTimeout to ensure window.layers is initialized and layer-manager.js is loaded
+    setTimeout(() => {
+        initializeLayerDropdown();
+    }, 100);
 }
 
 // Activate selection tool
@@ -1152,6 +1215,7 @@ function getIsSelectionActive() {
 // Make all functions globally available
 window.initializeSelectionTools = initializeSelectionTools;
 window.setupSelectionListeners = setupSelectionListeners;
+window.initializeLayerDropdown = initializeLayerDropdown;
 window.activateSelectionTool = activateSelectionTool;
 window.deactivateSelectionTool = deactivateSelectionTool;
 window.clearSelection = clearSelection;
@@ -1160,6 +1224,12 @@ window.getSelectedFeatures = getSelectedFeatures;
 window.getActiveSelectionLayerId = getActiveSelectionLayerId;
 window.setActiveSelectionLayerId = setActiveSelectionLayerId;
 window.getIsSelectionActive = getIsSelectionActive;
+
+// Make activeSelectionLayerId globally accessible for layer-manager.js
+Object.defineProperty(window, 'activeSelectionLayerId', {
+    get: function() { return activeSelectionLayerId; },
+    set: function(value) { activeSelectionLayerId = value; }
+});
 window.safeBindPopup = safeBindPopup;
 window.disablePopupsOnAllLayers = disablePopupsOnAllLayers;
 window.enablePopupsOnAllLayers = enablePopupsOnAllLayers;

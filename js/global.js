@@ -95,89 +95,20 @@ async function loadInitialData() {
         } else {
             console.log('No layers found in database');
         }
+        
+        // Initialize selection layer dropdown after initial data is loaded
+        setTimeout(() => {
+            if (typeof window.initializeLayerDropdown === 'function') {
+                window.initializeLayerDropdown();
+            }
+        }, 200);
 
     } catch (error) {
         console.error('Error in loadInitialData:', error);
     }
 }
 
-// Layer management functions
-function updateLayersList() {
-    const layersList = document.getElementById('layersList');
-    const noLayersMessage = document.getElementById('noLayersMessage');
-    
-    if (!layersList || !noLayersMessage) {
-        console.warn('Layer UI elements not found');
-        return;
-    }
-
-    if (window.layers.size === 0) {
-        layersList.style.display = 'none';
-        noLayersMessage.style.display = 'block';
-        return;
-    }
-
-    layersList.style.display = 'block';
-    noLayersMessage.style.display = 'none';
-    layersList.innerHTML = '';
-
-    // Sort layers by order
-    const sortedLayers = window.layerOrder
-        .filter(id => window.layers.has(id))
-        .map(id => ({ id, ...window.layers.get(id) }));
-
-    sortedLayers.forEach(layerInfo => {
-        const layerItem = createLayerItem(layerInfo.id, layerInfo);
-        layersList.appendChild(layerItem);
-    });
-}
-
-function createLayerItem(layerId, layerInfo) {
-    const item = document.createElement('div');
-    item.className = 'glass-section p-3 layer-item';
-    item.setAttribute('data-layer-id', layerId);
-
-    item.innerHTML = `
-        <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-2">
-                <input type="checkbox" ${layerInfo.visible ? 'checked' : ''} 
-                       class="layer-visibility-toggle" data-layer-id="${layerId}">
-                <span class="layer-name text-white text-sm font-medium">${layerInfo.name}</span>
-            </div>
-            <div class="flex items-center space-x-2">
-                <button class="text-light-gray hover:text-white transition-colors bg-transparent border-0 p-1" 
-                        onclick="zoomToLayer('${layerId}')" title="Zoom to layer">
-                    <i class="fas fa-search-plus text-xs"></i>
-                </button>
-                <button class="text-light-gray hover:text-white transition-colors bg-transparent border-0 p-1" 
-                        onclick="removeLayer('${layerId}')" title="Remove layer">
-                    <i class="fas fa-trash text-xs"></i>
-                </button>
-            </div>
-        </div>
-    `;
-
-    // Add visibility toggle listener
-    const checkbox = item.querySelector('.layer-visibility-toggle');
-    checkbox.addEventListener('change', (e) => {
-        toggleLayerVisibility(layerId, e.target.checked);
-    });
-
-    return item;
-}
-
-function toggleLayerVisibility(layerId, visible) {
-    const layerInfo = window.layers.get(layerId);
-    if (!layerInfo) return;
-
-    if (visible) {
-        layerInfo.layer.addTo(window.map);
-    } else {
-        window.map.removeLayer(layerInfo.layer);
-    }
-
-    layerInfo.visible = visible;
-}
+// Layer management functions moved to layer-manager.js
 
 function zoomToLayer(layerId) {
     const layerInfo = window.layers.get(layerId);
@@ -270,9 +201,7 @@ function setupFileUploadListeners() {
 // Export functions globally
 window.saveDynamicLayerToDatabase = saveDynamicLayerToDatabase;
 window.loadInitialData = loadInitialData;
-window.updateLayersList = updateLayersList;
-window.createLayerItem = createLayerItem;
-window.toggleLayerVisibility = toggleLayerVisibility;
+// updateLayersList, createLayerItem, toggleLayerVisibility exported from layer-manager.js
 window.zoomToLayer = zoomToLayer;
 window.removeLayer = removeLayer;
 window.updateLegend = updateLegend;

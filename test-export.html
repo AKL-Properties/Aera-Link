@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Export Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+    <h1>Export Test</h1>
+    <div id="test-area" style="width: 400px; height: 300px; background: #f0f8ff; border: 1px solid #ccc; position: relative;">
+        <div style="padding: 20px;">
+            <h2>Test Map Area</h2>
+            <p>This simulates a map with basemap tiles from external sources</p>
+            <img src="https://a.basemaps.cartocdn.com/light_all/0/0/0.png" alt="Sample tile" style="width: 100px; height: 100px; opacity: 0.7;">
+        </div>
+    </div>
+    <br>
+    <button onclick="testExport()">Test Export (Simple html2canvas)</button>
+    
+    <script>
+    async function testExport() {
+        console.log('Testing html2canvas export...');
+        try {
+            const canvas = await html2canvas(document.getElementById('test-area'), {
+                useCORS: false,
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                logging: false
+            });
+            
+            // Convert to blob and download
+            canvas.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'test_export.png';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                console.log('Export successful - no CORS warnings should appear');
+            }, 'image/png');
+            
+        } catch (error) {
+            console.error('Export failed:', error);
+        }
+    }
+    </script>
+</body>
+</html>

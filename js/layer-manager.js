@@ -1003,34 +1003,39 @@ function updateLayersList() {
 
         const layerInfo = window.layers.get(layerId);
         const layerDiv = document.createElement('div');
-        layerDiv.className = 'layer-item rounded-lg p-3 glass-panel';
+        layerDiv.className = 'layer-item rounded-lg p-4 mb-3 transition-all duration-200 cursor-pointer' + 
+            ' bg-black bg-opacity-40 backdrop-blur-sm border border-gray-600 border-opacity-30' + 
+            ' hover:bg-opacity-60 hover:border-neon-teal hover:border-opacity-50';
         layerDiv.draggable = true;
         layerDiv.setAttribute('data-layer-id', layerId);
         layerDiv.setAttribute('data-layer-name', layerInfo.name);
         
         layerDiv.innerHTML = `
             <div class="flex items-center justify-between mb-2">
-                <div class="flex items-center space-x-2">
-                    <i class="fas fa-grip-vertical layer-drag-handle text-sm"></i>
-                    <span class="font-medium ${layerInfo.isPermanent ? 'text-amber-300' : 'text-white'} truncate">
+                <div class="flex items-center space-x-3">
+                    <i class="fas fa-grip-vertical layer-drag-handle text-sm text-gray-400 hover:text-neon-teal transition-colors cursor-move"></i>
+                    <span class="font-medium ${layerInfo.isPermanent ? 'text-amber-300' : 'text-white'} truncate text-sm">
                         ${layerInfo.name}
-                        ${layerInfo.isPermanent ? '<i class="fas fa-server text-xs ml-1" title="Permanent layer from Supabase Storage"></i>' : ''}
-                        ${layerInfo.fromDatabase && !layerInfo.isPermanent ? '<i class="fas fa-database text-xs ml-1 text-blue-400" title="Dynamic layer from database"></i>' : ''}
+                        ${layerInfo.isPermanent ? '<i class="fas fa-server text-xs ml-2 text-amber-400" title="Permanent layer from Supabase Storage"></i>' : ''}
+                        ${layerInfo.fromDatabase && !layerInfo.isPermanent ? '<i class="fas fa-database text-xs ml-2 text-blue-400" title="Dynamic layer from database"></i>' : ''}
                     </span>
                 </div>
-                <div class="flex items-center space-x-3">
-                    <button class="symbology-btn text-teal-400 hover:text-teal-300 text-lg transition-colors bg-transparent border-0 p-1" data-layer="${layerId}" title="Edit Symbology">
+                <div class="flex items-center space-x-2">
+                    <button class="symbology-btn text-neon-teal hover:text-teal-300 text-base transition-all duration-200 bg-transparent border-0 p-2 rounded hover:bg-neon-teal hover:bg-opacity-20" data-layer="${layerId}" title="Edit Symbology">
                         <i class="fas fa-palette"></i>
                     </button>
-                    <button class="visibility-btn text-lg transition-all duration-200 cursor-pointer bg-transparent border-0 p-1 hover:bg-opacity-20 hover:bg-white rounded" data-layer="${layerId}" title="Toggle Visibility">
-                        <i class="fas ${layerInfo.visible ? 'fa-eye text-teal-400 hover:text-teal-300' : 'fa-eye-slash text-gray-500 hover:text-gray-400'}"></i>
+                    <button class="visibility-btn text-base transition-all duration-200 cursor-pointer bg-transparent border-0 p-2 rounded hover:bg-white hover:bg-opacity-10" data-layer="${layerId}" title="Toggle Visibility">
+                        <i class="fas ${layerInfo.visible ? 'fa-eye text-neon-teal hover:text-teal-300' : 'fa-eye-slash text-gray-500 hover:text-gray-400'}"></i>
                     </button>
                 </div>
             </div>
-            <div class="text-xs text-gray-400 italic">
-                ${Object.keys(layerInfo.data.features || {}).length || layerInfo.data.features?.length || 0} features
-                ${layerInfo.isPermanent ? ' • From Supabase Storage' : ''}
-                ${layerInfo.fromDatabase && !layerInfo.isPermanent ? ' • From database' : ''}
+            <div class="text-xs text-gray-400 mt-2 pl-7">
+                <span class="inline-flex items-center">
+                    <i class="fas fa-layer-group text-xs mr-1 text-gray-500"></i>
+                    ${Object.keys(layerInfo.data.features || {}).length || layerInfo.data.features?.length || 0} features
+                </span>
+                ${layerInfo.isPermanent ? '<span class="ml-3 text-amber-400">• Storage</span>' : ''}
+                ${layerInfo.fromDatabase && !layerInfo.isPermanent ? '<span class="ml-3 text-blue-400">• Database</span>' : ''}
             </div>
         `;
 
@@ -1038,13 +1043,6 @@ function updateLayersList() {
 
         // Setup drag and drop for this layer
         setupLayerDragDrop(layerDiv, layerId);
-
-        // Add right-click context menu event listener
-        layerDiv.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            showLayerContextMenu(e, layerId, layerInfo.name);
-        });
 
         // Add existing event listeners
         const visibilityBtn = layerDiv.querySelector('.visibility-btn');
@@ -1078,8 +1076,10 @@ function updateLayersList() {
             // Ensure we hide any existing context menus first
             hideLayerContextMenu();
             
-            // Show the layer context menu
-            showLayerContextMenu(e, layerId, layerInfo.name);
+            // Small delay to prevent immediate closing from the click event
+            setTimeout(() => {
+                showLayerContextMenu(e, layerId, layerInfo.name);
+            }, 10);
             
             return false;
         });
@@ -1585,122 +1585,6 @@ function resetContextMenuVariables() {
 }
 
 // Setup context menu event listeners
-function setupLayerContextMenuListeners() {
-    console.log('⚙️ Setting up layer context menu listeners...');
-    
-    const contextMenu = document.getElementById('layerContextMenu');
-    if (!contextMenu) {
-        console.error('❌ Layer context menu element not found during setup!');
-        return;
-    }
-    
-    console.log('✅ Found layer context menu element');
-    
-    contextMenu.addEventListener('click', function(e) {
-        e.stopPropagation();
-        console.log('🖱️ Click inside layer context menu - preventing propagation');
-    });
-    
-    // Zoom to Layer
-    const zoomToLayerBtn = document.getElementById('contextZoomToLayer');
-    if (zoomToLayerBtn) {
-        zoomToLayerBtn.addEventListener('click', function() {
-            console.log('🔍 Zoom to Layer clicked for:', currentContextLayerName);
-            if (currentContextLayerId) {
-                zoomToLayer(currentContextLayerId);
-                hideLayerContextMenu();
-            }
-        });
-        console.log('✅ Zoom to Layer listener attached');
-    } else {
-        console.error('❌ Zoom to Layer button not found!');
-    }
-    
-    // Rename Layer
-    const renameBtn = document.getElementById('contextRename');
-    if (renameBtn) {
-        renameBtn.addEventListener('click', function() {
-            console.log('✏️ Rename Layer clicked for:', currentContextLayerName);
-            if (currentContextLayerId && currentContextLayerName) {
-                hideLayerContextMenu();
-                renameLayer(currentContextLayerId, currentContextLayerName);
-            }
-        });
-        console.log('✅ Rename Layer listener attached');
-    } else {
-        console.error('❌ Rename Layer button not found!');
-    }
-    
-    // Properties (open symbology editor)
-    const propertiesBtn = document.getElementById('contextProperties');
-    if (propertiesBtn) {
-        propertiesBtn.addEventListener('click', function() {
-            console.log('🎨 Properties clicked for:', currentContextLayerName);
-            if (currentContextLayerId) {
-                try {
-                    openSymbologyEditor(currentContextLayerId);
-                    hideLayerContextMenu();
-                } catch (error) {
-                    console.error('Error opening symbology editor:', error);
-                    showError('Error opening symbology editor. Check console for details.', 'Symbology Error');
-                }
-            }
-        });
-        console.log('✅ Properties listener attached');
-    } else {
-        console.error('❌ Properties button not found!');
-    }
-    
-    // Delete Layer
-    const deleteBtn = document.getElementById('contextDelete');
-    if (deleteBtn) {
-        deleteBtn.addEventListener('click', async function() {
-            console.log('🗑️ Delete Layer clicked for:', currentContextLayerName);
-            const layerIdToDelete = currentContextLayerId;
-            const layerNameToDelete = currentContextLayerName;
-
-        if (!layerIdToDelete || !layerNameToDelete) {
-            console.error('Cannot delete layer: No layer selected');
-            showNotification('Cannot delete layer: No layer selected.', 'error');
-            hideLayerContextMenu();
-            return;
-        }
-
-        if (!layers.has(layerIdToDelete)) {
-            console.error(`Cannot delete layer: Layer ${layerIdToDelete} not found`);
-            showNotification(`Layer not found in system. Cannot delete.`, 'error');
-            resetContextMenuVariables();
-            return;
-        }
-
-        if (!this.classList.contains('disabled')) {
-            hideLayerContextMenu();
-            
-            try {
-                console.log(`🗑️ Deleting layer: ${layerNameToDelete}`);
-                await deleteLayer(layerIdToDelete, layerNameToDelete);
-            } finally {
-                resetContextMenuVariables();
-            }
-        } else {
-            const layerInfo = layers.get(layerIdToDelete);
-            if (layerInfo && layerInfo.isPermanent) {
-                console.log(`ℹ️ Cannot delete permanent layer: ${layerNameToDelete}`);
-                showNotification(`"${layerNameToDelete}" is a permanent layer and cannot be deleted.`, 'info');
-            } else {
-                showNotification('This layer cannot be deleted.', 'info');
-            }
-            hideLayerContextMenu();
-            resetContextMenuVariables();
-        }
-        });
-        console.log('✅ Delete Layer listener attached');
-    } else {
-        console.error('❌ Delete Layer button not found!');
-    }
-    
-    console.log('✅ All layer context menu listeners set up successfully');
-}
 
 // Zoom to layer function
 function zoomToLayer(layerId) {
@@ -2709,6 +2593,12 @@ function setupLayerContextMenuListeners() {
         console.error('Context menu element not found during setup');
         return;
     }
+
+    // Prevent context menu from closing when clicking inside it
+    contextMenu.addEventListener('click', function(e) {
+        e.stopPropagation();
+        console.log('🖱️ Click inside layer context menu - preventing propagation');
+    });
 
     // Zoom to Layer
     const zoomToLayerItem = document.getElementById('contextZoomToLayer');
