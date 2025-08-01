@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FeatureServer Test - Aéra Link</title>
+</head>
+<body>
+    <h1>FeatureServer Auto-Detection Test</h1>
+    <p>This is a simple test to verify the FeatureServer auto-detection functionality works correctly.</p>
+    
+    <h2>Test URLs:</h2>
+    <ul>
+        <li><strong>Root FeatureServer (should auto-detect sublayers):</strong><br>
+            <code>https://services.arcgis.com/example/arcgis/rest/services/SampleService/FeatureServer</code></li>
+        <li><strong>Specific Layer (should work as before):</strong><br>
+            <code>https://services.arcgis.com/example/arcgis/rest/services/SampleService/FeatureServer/0</code></li>
+    </ul>
+    
+    <h2>Expected Behavior:</h2>
+    <ol>
+        <li>When entering a URL ending in <code>/FeatureServer</code> or <code>/MapServer</code> (without layer index), the system should:
+            <ul>
+                <li>Automatically detect all available sublayers (0, 1, 2, etc.)</li>
+                <li>Load each sublayer as a separate map layer</li>
+                <li>Use pagination to fetch ALL features (not limited to 2000)</li>
+                <li>Display each sublayer in the Layer Manager and Legend with proper names</li>
+            </ul>
+        </li>
+        <li>When entering a URL with a specific layer index (e.g., <code>/0</code>), it should work as before (single layer)</li>
+    </ol>
+    
+    <h2>Implementation Details:</h2>
+    <ul>
+        <li>✅ Root service detection logic added to <code>handleArcGISRestUrl()</code></li>
+        <li>✅ New <code>handleRootFeatureServer()</code> function discovers all sublayers</li>
+        <li>✅ New <code>loadSingleFeatureServerLayer()</code> function handles individual layer loading with pagination</li>
+        <li>✅ Full pagination support with <code>resultOffset</code> and <code>resultRecordCount</code></li>
+        <li>✅ Each sublayer becomes a separate named layer in the map interface</li>
+        <li>✅ Progress tracking shows discovery and loading progress</li>
+    </ul>
+    
+    <p><strong>To test:</strong> Open the main Aéra Link application and try entering a root FeatureServer URL in the "Load from URL" field.</p>
+</body>
+</html>

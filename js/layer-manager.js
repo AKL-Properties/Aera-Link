@@ -67,29 +67,62 @@ function addDataToMapWithPreloadedStyle(geoData, fileName, preloadedStyle, isPer
     // Apply style based on symbology type
     let layerStyleFunction;
     
-    if (preloadedStyle.categoricalField && preloadedStyle.colorMap) {
+    // Check for categorical symbology - handle both old and new database formats
+    const isCategorical = preloadedStyle.symbology_type === 'categorical' || 
+                         (preloadedStyle.categoricalField && preloadedStyle.colorMap) ||
+                         (preloadedStyle.classification_field && preloadedStyle.categories);
+    
+    if (isCategorical) {
         // Categorical symbology - apply color mapping per feature
         console.log('📊 Applying categorical symbology with preloaded colors');
+        
+        // Handle different database formats for categorical data
+        let fieldName, colorMap;
+        
+        if (preloadedStyle.categoricalField && preloadedStyle.colorMap) {
+            // Legacy format
+            fieldName = preloadedStyle.categoricalField;
+            colorMap = preloadedStyle.colorMap;
+        } else if (preloadedStyle.classification_field && preloadedStyle.categories) {
+            // New database format with categories array
+            fieldName = preloadedStyle.classification_field;
+            colorMap = {};
+            preloadedStyle.categories.forEach(cat => {
+                colorMap[cat.value] = cat.color;
+            });
+        } else if (preloadedStyle.classification_field && preloadedStyle.colorMap) {
+            // Mixed format
+            fieldName = preloadedStyle.classification_field;
+            colorMap = preloadedStyle.colorMap;
+        }
+        
+        console.log(`Using categorical field: ${fieldName}`, colorMap);
+        
         layerStyleFunction = function(feature) {
-            const fieldValue = feature.properties[preloadedStyle.categoricalField];
-            const color = preloadedStyle.colorMap[fieldValue] || '#14b8a6'; // fallback color
+            const fieldValue = feature.properties[fieldName];
+            const color = colorMap[fieldValue] || '#14b8a6'; // fallback color
             return {
-                color: preloadedStyle.strokeColor || '#000000',
-                weight: preloadedStyle.strokeWidth || 0.5,
-                opacity: preloadedStyle.strokeOpacity || 1.0,
+                color: preloadedStyle.stroke_color || preloadedStyle.strokeColor || '#ffffff',
+                weight: preloadedStyle.stroke_weight || preloadedStyle.strokeWidth || 2,
+                opacity: preloadedStyle.stroke_opacity || preloadedStyle.strokeOpacity || 1.0,
                 fillColor: color,
-                fillOpacity: preloadedStyle.fillOpacity || 1.0
+                fillOpacity: preloadedStyle.fill_opacity || preloadedStyle.fillOpacity || 1.0
             };
         };
+        
+        // Store classification info for the symbology editor
+        finalStyle.categoricalField = fieldName;
+        finalStyle.colorMap = colorMap;
+        
     } else {
         // Single symbol symbology - use consistent style
         console.log('🎯 Applying single symbol symbology with preloaded colors');
         layerStyleFunction = {
-            color: preloadedStyle.strokeColor || preloadedStyle.color || '#000000',
-            weight: preloadedStyle.strokeWidth || preloadedStyle.weight || 0.5,
-            opacity: preloadedStyle.strokeOpacity || preloadedStyle.opacity || 0.0,
-            fillColor: preloadedStyle.fillColor || '#888888',
-            fillOpacity: preloadedStyle.fillOpacity || 0.0
+            color: preloadedStyle.stroke_color || preloadedStyle.strokeColor || preloadedStyle.color || '#ffffff',
+            weight: preloadedStyle.stroke_weight || preloadedStyle.strokeWidth || preloadedStyle.weight || 2,
+            opacity: preloadedStyle.stroke_opacity || preloadedStyle.strokeOpacity || preloadedStyle.opacity || 1.0,
+            fillColor: preloadedStyle.fill_color || preloadedStyle.fillColor || '#888888',
+            fillOpacity: preloadedStyle.fill_opacity || preloadedStyle.fillOpacity || 1.0
         };
     }
 
@@ -105,37 +138,61 @@ function addDataToMapWithPreloadedStyle(geoData, fileName, preloadedStyle, isPer
                 }
                 popupContent += '</div>';
                 
-                // Bind popup only on right-click (contextmenu)
-                layer.on('contextmenu', function(e) {
-                    // Popup logic now handled in interaction-handlers.js
-                });
+                // Right-click popup is handled by interaction-handlers.js
+                // The context menu binding is automatically applied via bindContextMenuToLayers()
             }
         }
     }).addTo(map);
 
+    // Removed old loading state tracking
+
     // Store layer information with preloaded style
-    window.layers.set(layerId, {
+    const layerInfo = {
         layer: layer,
         name: layerName,
         data: geoData,
         visible: true,
         style: finalStyle, // Store the complete preloaded style object
         originalData: JSON.parse(JSON.stringify(geoData)),
-        opacity: preloadedStyle.fillOpacity || 1.0,
+        opacity: preloadedStyle.fill_opacity || preloadedStyle.fillOpacity || 1.0,
         isPermanent: isPermanent,
         fromDatabase: false,
         layerId: layerId,
         createdAt: new Date().toISOString()
-    });
+    };
+    
+    // Store classification info if this is categorical symbology
+    if (isCategorical && finalStyle.categoricalField && finalStyle.colorMap) {
+        layerInfo.classification = {
+            field: finalStyle.categoricalField,
+            colorMap: finalStyle.colorMap,
+            strokeColor: preloadedStyle.stroke_color || preloadedStyle.strokeColor || '#ffffff',
+            strokeWidth: preloadedStyle.stroke_weight || preloadedStyle.strokeWidth || 2
+        };
+    }
+    
+    window.layers.set(layerId, layerInfo);
 
     // Add to layer order for consistent display
-    window.layerOrder.unshift(layerId);
+    // For permanent layers, add to back to maintain loading order. For dynamic layers, add to front for visibility
+    if (isPermanent) {
+        window.layerOrder.push(layerId);
+        console.log(`🗺️ Permanent layer "${layerName}" added to back of layer order (preserves user order preferences)`);
+    } else {
+        window.layerOrder.unshift(layerId);
+        console.log(`🗺️ Dynamic layer "${layerName}" added to front of layer order (highest z-index, reorderable)`);
+    }
 
     console.log(`✅ Layer "${layerName}" created with preloaded symbology - no flash occurred`);
 
     // Update UI elements
     updateLayersList();
     enhancedUpdateLegend();
+
+    // Bind context menu handlers for the new layer
+    if (typeof window.bindContextMenuToLayers === 'function') {
+        setTimeout(() => window.bindContextMenuToLayers(), 100);
+    }
 
     // Fit map bounds for permanent layers like Aera
     if (isPermanent) {
@@ -191,7 +248,7 @@ function addDataToMap(geoData, fileName, fromDatabase = false, databaseId = null
         weight: 0.5,
         opacity: 1.0,
         fillColor: '#888888',
-        fillOpacity: 0.7
+        fillOpacity: 1.0
     };
 
     const layer = L.geoJSON(geoData, {
@@ -205,12 +262,13 @@ function addDataToMap(geoData, fileName, fromDatabase = false, databaseId = null
                 }
                 popupContent += '</div>';
                 
-                layer.on('contextmenu', function(e) {
-                    // Popup logic handled in interaction-handlers.js
-                });
+                // Right-click popup is handled by interaction-handlers.js
+                // The context menu binding is automatically applied via bindContextMenuToLayers()
             }
         }
     }).addTo(map);
+
+    // Removed old loading state tracking
 
     // Store layer information
     window.layers.set(layerId, {
@@ -228,8 +286,15 @@ function addDataToMap(geoData, fileName, fromDatabase = false, databaseId = null
         createdAt: new Date().toISOString()
     });
 
-    // Add to layer order
-    layerOrder.unshift(layerId);
+    // Add to layer order for consistent display
+    // For permanent layers, add to back to maintain loading order. For dynamic layers, add to front for visibility
+    if (isPermanent) {
+        layerOrder.push(layerId);
+        console.log(`🗺️ Permanent layer "${layerName}" added to back of layer order (preserves user order preferences)`);
+    } else {
+        layerOrder.unshift(layerId);
+        console.log(`🗺️ Dynamic layer "${layerName}" added to front of layer order (highest z-index, reorderable)`);
+    }
 
     // Zoom to layer
     map.fitBounds(layer.getBounds());
@@ -240,6 +305,11 @@ function addDataToMap(geoData, fileName, fromDatabase = false, databaseId = null
         enhancedUpdateLegend();
     }
     updateSelectionLayerDropdown(); // Update selection dropdown
+
+    // Bind context menu handlers for the new layer
+    if (typeof window.bindContextMenuToLayers === 'function') {
+        setTimeout(() => window.bindContextMenuToLayers(), 100);
+    }
 
     // Save dynamic layers to database (not permanent layers)
     if (!fromDatabase && supabase && !isPermanent && currentUser) {
@@ -542,6 +612,14 @@ async function loadDynamicLayersFromDatabase(retryCount = 0) {
 
         if (!layerList || layerList.length === 0) {
             console.log('No dynamic layers found in database for current user');
+            // Update loading state - no dynamic layers to load
+            if (window.loadingState) {
+                window.loadingState.totalDynamicLayers = 0;
+                window.loadingState.dynamicLayersLoaded = 0;
+            }
+            if (typeof window.checkLoadingComplete === 'function') {
+                window.checkLoadingComplete();
+            }
             return;
         }
 
@@ -628,14 +706,20 @@ async function loadDynamicLayersFromDatabase(retryCount = 0) {
         if (savedLayers && savedLayers.length > 0) {
             console.log(`Found ${savedLayers.length} dynamic layers in database`);
             
+            // Set total dynamic layers count
+            if (window.loadingState) {
+                window.loadingState.totalDynamicLayers = savedLayers.length;
+                window.loadingState.dynamicLayersLoaded = 0;
+            }
+            
             let loadedCount = 0;
             for (const savedLayer of savedLayers) {
-                // Skip if layer already exists locally
+                // Skip if layer already exists locally (check by database ID and by name)
                 const existingLayer = Array.from(window.layers.entries()).find(([layerId, layerInfo]) => 
-                    layerInfo.databaseId === savedLayer.id
+                    layerInfo.databaseId === savedLayer.id || layerInfo.name === savedLayer.name
                 );
                 if (existingLayer) {
-                    console.log(`Skipping duplicate layer from database: ${savedLayer.name}`);
+                    console.log(`Skipping duplicate layer from database: ${savedLayer.name} (already exists on map)`);
                     continue;
                 }
 
@@ -646,22 +730,49 @@ async function loadDynamicLayersFromDatabase(retryCount = 0) {
                 }
 
                 try {
+                    if (typeof window.updateLoadingProgress === 'function') {
+                        window.updateLoadingProgress('Loading dynamic layers', loadedCount + 1, savedLayers.length);
+                    }
+                    
                     // Add the saved layer to map (fromDatabase=true, isPermanent=false)
                     const newLayerId = addDataToMap(savedLayer.geojson_data, savedLayer.name, true, savedLayer.id, false);
                     loadedCount++;
+                    
+                    // Update loading state
+                    if (window.loadingState) {
+                        window.loadingState.dynamicLayersLoaded = loadedCount;
+                    }
+                    
                     console.log(`✅ Loaded dynamic layer from database: ${savedLayer.name}`);
                 } catch (layerError) {
                     console.error(`Error loading layer "${savedLayer.name}":`, layerError);
+                    loadedCount++;
+                    if (window.loadingState) {
+                        window.loadingState.dynamicLayersLoaded = loadedCount;
+                    }
                 }
             }
             
             if (loadedCount > 0) {
-                showNotification(`Loaded ${loadedCount} dynamic layers from database`, 'success');
+                // Loaded dynamic layers from database
             } else {
                 console.log('No new dynamic layers to load from database');
             }
+            
+            // Check if loading is complete
+            if (typeof window.checkLoadingComplete === 'function') {
+                window.checkLoadingComplete();
+            }
         } else {
             console.log('No dynamic layers found in database for current user');
+            // Update loading state - no dynamic layers to load
+            if (window.loadingState) {
+                window.loadingState.totalDynamicLayers = 0;
+                window.loadingState.dynamicLayersLoaded = 0;
+            }
+            if (typeof window.checkLoadingComplete === 'function') {
+                window.checkLoadingComplete();
+            }
         }
     } catch (error) {
         console.error('Network error loading from database:', error);
@@ -673,6 +784,14 @@ async function loadDynamicLayersFromDatabase(retryCount = 0) {
             return loadDynamicLayersFromDatabase(retryCount + 1);
         } else {
             showNotification(`Network error loading dynamic layers: ${error.message}`, 'error');
+            // Even on error, mark as complete to avoid infinite loading
+            if (window.loadingState) {
+                window.loadingState.totalDynamicLayers = 0;
+                window.loadingState.dynamicLayersLoaded = 0;
+            }
+            if (typeof window.checkLoadingComplete === 'function') {
+                window.checkLoadingComplete();
+            }
         }
     }
 }
@@ -784,6 +903,11 @@ function clearOldLayerCaches() {
 
 // Load initial data - permanent layers from Supabase Storage
 function loadInitialData() {
+    // Show initialization loading screen (only once per session, auto-hides after 1 second)
+    if (typeof window.showInitializationLoading === 'function') {
+        window.showInitializationLoading();
+    }
+    
     // Clear any cached references to old layers
     clearOldLayerCaches();
     localStorage.removeItem('layer_1_symbology');
@@ -808,6 +932,8 @@ function loadInitialData() {
                 populateFilterLayers();
             }, 500);
         }, 700);
+    } else {
+        console.warn('⚠️ Supabase not available or user not authenticated - dynamic layers will not load');
     }
 }
 
@@ -821,15 +947,52 @@ async function loadPermanentLayersWithSymbology() {
         
         if (permanentFiles.length === 0) {
             console.log('ℹ️ No permanent layers found in Supabase Storage');
+            // Update loading state - no permanent layers to load
+            if (window.loadingState) {
+                window.loadingState.totalPermanentLayers = 0;
+                window.loadingState.permanentLayersLoaded = 0;
+            }
+            if (typeof window.checkLoadingComplete === 'function') {
+                window.checkLoadingComplete();
+            }
             return;
         }
 
-        // Load each permanent layer
-        for (const file of permanentFiles) {
+        // Set total permanent layers count
+        if (window.loadingState) {
+            window.loadingState.totalPermanentLayers = permanentFiles.length;
+            window.loadingState.permanentLayersLoaded = 0;
+        }
+
+        // Load each permanent layer in reverse order to avoid predictable stacking
+        // This reduces the hardcoded feel of layer ordering on refresh
+        const reversedFiles = [...permanentFiles].reverse();
+        let loadedCount = 0;
+        
+        for (const file of reversedFiles) {
             try {
+                if (typeof window.updateLoadingProgress === 'function') {
+                    window.updateLoadingProgress('Loading permanent layers', loadedCount + 1, permanentFiles.length);
+                }
+                
                 await loadSinglePermanentLayer(file.name);
+                loadedCount++;
+                
+                // Update loading state
+                if (window.loadingState) {
+                    window.loadingState.permanentLayersLoaded = loadedCount;
+                }
+                
+                if (typeof window.checkLoadingComplete === 'function') {
+                    window.checkLoadingComplete();
+                }
+                
             } catch (error) {
                 console.error(`Failed to load permanent layer ${file.name}:`, error);
+                loadedCount++;
+                if (window.loadingState) {
+                    window.loadingState.permanentLayersLoaded = loadedCount;
+                }
             }
         }
 
@@ -841,6 +1004,14 @@ async function loadPermanentLayersWithSymbology() {
 
     } catch (error) {
         console.error('Error in loadPermanentLayersWithSymbology:', error);
+        // Even on error, mark as complete to avoid infinite loading
+        if (window.loadingState) {
+            window.loadingState.totalPermanentLayers = 0;
+            window.loadingState.permanentLayersLoaded = 0;
+        }
+        if (typeof window.checkLoadingComplete === 'function') {
+            window.checkLoadingComplete();
+        }
     }
 }
 
@@ -871,13 +1042,167 @@ async function loadSinglePermanentLayer(fileName) {
     }
 }
 
+// Refresh symbology for all permanent layers after authentication
+async function refreshPermanentLayerSymbology() {
+    console.log('🔄 Refreshing symbology for permanent layers after authentication...');
+    
+    // Find all permanent layers that might need style updates
+    const permanentLayers = Array.from(window.layers.entries()).filter(([layerId, layerInfo]) => 
+        layerInfo.isPermanent
+    );
+    
+    if (permanentLayers.length === 0) {
+        console.log('ℹ️ No permanent layers found to refresh');
+        return;
+    }
+    
+    for (const [layerId, layerInfo] of permanentLayers) {
+        try {
+            console.log(`🔄 Checking for updated symbology for permanent layer: ${layerInfo.name}`);
+            
+            // Check for stored symbology
+            const storedSymbology = await getUserStyleForLayer(layerInfo.name);
+            
+            if (storedSymbology) {
+                console.log(`✅ Found stored symbology for ${layerInfo.name}, applying update`);
+                
+                // Apply the stored symbology to the existing layer
+                await applyStoredSymbologyToLayer(layerId, storedSymbology);
+                
+                // Update layer info with the new style
+                layerInfo.style = storedSymbology;
+                
+                // Update classification info if categorical
+                const isCategorical = storedSymbology.symbology_type === 'categorical' || 
+                                     (storedSymbology.categoricalField && storedSymbology.colorMap) ||
+                                     (storedSymbology.classification_field && storedSymbology.categories);
+                
+                if (isCategorical) {
+                    // Handle different database formats for categorical data
+                    let fieldName, colorMap;
+                    
+                    if (storedSymbology.categoricalField && storedSymbology.colorMap) {
+                        fieldName = storedSymbology.categoricalField;
+                        colorMap = storedSymbology.colorMap;
+                    } else if (storedSymbology.classification_field && storedSymbology.categories) {
+                        fieldName = storedSymbology.classification_field;
+                        colorMap = {};
+                        storedSymbology.categories.forEach(cat => {
+                            colorMap[cat.value] = cat.color;
+                        });
+                    } else if (storedSymbology.classification_field && storedSymbology.colorMap) {
+                        fieldName = storedSymbology.classification_field;
+                        colorMap = storedSymbology.colorMap;
+                    }
+                    
+                    if (fieldName && colorMap) {
+                        layerInfo.classification = {
+                            field: fieldName,
+                            colorMap: colorMap,
+                            strokeColor: storedSymbology.stroke_color || storedSymbology.strokeColor || '#ffffff',
+                            strokeWidth: storedSymbology.stroke_weight || storedSymbology.strokeWidth || 2
+                        };
+                    }
+                }
+            } else {
+                console.log(`ℹ️ No stored symbology found for ${layerInfo.name}`);
+            }
+        } catch (error) {
+            console.error(`Error refreshing symbology for layer ${layerInfo.name}:`, error);
+        }
+    }
+    
+    // Update UI elements
+    updateLayersList();
+    enhancedUpdateLegend();
+    
+    console.log('✅ Permanent layer symbology refresh completed');
+}
+
+// Apply stored symbology to an existing layer
+async function applyStoredSymbologyToLayer(layerId, storedSymbology) {
+    const layerInfo = window.layers.get(layerId);
+    if (!layerInfo || !layerInfo.layer) {
+        console.error('Layer not found for symbology application:', layerId);
+        return;
+    }
+    
+    // Check for categorical symbology
+    const isCategorical = storedSymbology.symbology_type === 'categorical' || 
+                         (storedSymbology.categoricalField && storedSymbology.colorMap) ||
+                         (storedSymbology.classification_field && storedSymbology.categories);
+    
+    if (isCategorical) {
+        // Handle categorical symbology
+        let fieldName, colorMap;
+        
+        if (storedSymbology.categoricalField && storedSymbology.colorMap) {
+            fieldName = storedSymbology.categoricalField;
+            colorMap = storedSymbology.colorMap;
+        } else if (storedSymbology.classification_field && storedSymbology.categories) {
+            fieldName = storedSymbology.classification_field;
+            colorMap = {};
+            storedSymbology.categories.forEach(cat => {
+                colorMap[cat.value] = cat.color;
+            });
+        } else if (storedSymbology.classification_field && storedSymbology.colorMap) {
+            fieldName = storedSymbology.classification_field;
+            colorMap = storedSymbology.colorMap;
+        }
+        
+        if (fieldName && colorMap) {
+            console.log(`Applying categorical symbology to layer ${layerId}:`, { fieldName, colorMap });
+            layerInfo.layer.setStyle(function(feature) {
+                const fieldValue = feature.properties[fieldName];
+                const color = colorMap[fieldValue] || '#14b8a6';
+                return {
+                    color: storedSymbology.stroke_color || storedSymbology.strokeColor || '#ffffff',
+                    weight: storedSymbology.stroke_weight || storedSymbology.strokeWidth || 2,
+                    opacity: storedSymbology.stroke_opacity || storedSymbology.strokeOpacity || 1.0,
+                    fillColor: color,
+                    fillOpacity: storedSymbology.fill_opacity || storedSymbology.fillOpacity || 1.0
+                };
+            });
+        }
+    } else {
+        // Apply single symbol symbology
+        console.log(`Applying single symbol symbology to layer ${layerId}:`, storedSymbology);
+        const style = {
+            color: storedSymbology.stroke_color || storedSymbology.strokeColor || storedSymbology.color || '#ffffff',
+            weight: storedSymbology.stroke_weight || storedSymbology.strokeWidth || storedSymbology.weight || 2,
+            opacity: storedSymbology.stroke_opacity || storedSymbology.strokeOpacity || storedSymbology.opacity || 1.0,
+            fillColor: storedSymbology.fill_color || storedSymbology.fillColor || '#888888',
+            fillOpacity: storedSymbology.fill_opacity || storedSymbology.fillOpacity || 1.0
+        };
+        
+        layerInfo.layer.setStyle(style);
+    }
+}
+
 // === SYMBOLOGY MANAGEMENT FUNCTIONS ===
 
 // Get user-specific or shared style for a layer
-async function getUserStyleForLayer(layerName) {
+async function getUserStyleForLayer(layerName, retryCount = 0) {
     try {
-        if (!supabase || !currentUser) {
-            console.log('Supabase not available or user not logged in, skipping style fetch');
+        // Get current user state from global or authentication module
+        const currentUserState = window.currentUser || window.getCurrentUser?.();
+        
+        if (!supabase) {
+            console.log('Supabase not available, skipping style fetch');
+            return null;
+        }
+        
+        if (!currentUserState) {
+            console.log(`User not authenticated for style fetch (attempt ${retryCount + 1})`);
+            
+            // If this is during initial load, try to wait a bit for authentication
+            if (retryCount < 2) {
+                console.log('Retrying style fetch after authentication delay...');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                return getUserStyleForLayer(layerName, retryCount + 1);
+            }
+            
+            console.log('No authenticated user found after retries, skipping user-specific style fetch');
             return null;
         }
 
@@ -886,9 +1211,10 @@ async function getUserStyleForLayer(layerName) {
         
         let styleData = null;
         
+        console.log(`🔍 Fetching ${collaborativeMode ? 'shared' : 'user'} style for layer: ${layerName}`);
+        
         if (collaborativeMode) {
             // Load from shared_styles table
-            console.log(`🤝 Loading shared style for layer: ${layerName}`);
             const { data, error } = await supabase
                 .from('shared_styles')
                 .select('style')
@@ -902,11 +1228,10 @@ async function getUserStyleForLayer(layerName) {
             styleData = data;
         } else {
             // Load from user_styles table
-            console.log(`👤 Loading user-specific style for layer: ${layerName}`);
             const { data, error } = await supabase
                 .from('user_styles')
                 .select('style')
-                .eq('user_id', currentUser.id)
+                .eq('user_id', currentUserState.id)
                 .eq('layer_id', layerName)
                 .single();
 
@@ -918,10 +1243,11 @@ async function getUserStyleForLayer(layerName) {
         }
 
         if (styleData && styleData.style) {
-            console.log(`✅ Retrieved ${collaborativeMode ? 'shared' : 'user'} style for ${layerName}`);
+            console.log(`✅ Retrieved ${collaborativeMode ? 'shared' : 'user'} style for ${layerName}:`, styleData.style);
             return styleData.style;
         }
 
+        console.log(`ℹ️ No saved style found for layer: ${layerName}`);
         return null;
     } catch (error) {
         console.error('Network error fetching style:', error);
@@ -995,6 +1321,8 @@ async function saveUserStyleForLayer(layerName, styleData) {
 // Update layers list in toolbox panel
 function updateLayersList() {
     const layersList = document.getElementById('layersList');
+    
+    
     layersList.innerHTML = '';
 
     // Use layerOrder to maintain consistent ordering
@@ -1003,7 +1331,7 @@ function updateLayersList() {
 
         const layerInfo = window.layers.get(layerId);
         const layerDiv = document.createElement('div');
-        layerDiv.className = 'layer-item rounded-lg p-4 mb-3 transition-all duration-200 cursor-pointer' + 
+        layerDiv.className = 'layer-item rounded-lg p-3 mb-2 transition-all duration-200 cursor-pointer' + 
             ' bg-black bg-opacity-40 backdrop-blur-sm border border-gray-600 border-opacity-30' + 
             ' hover:bg-opacity-60 hover:border-neon-teal hover:border-opacity-50';
         layerDiv.draggable = true;
@@ -1011,28 +1339,37 @@ function updateLayersList() {
         layerDiv.setAttribute('data-layer-name', layerInfo.name);
         
         layerDiv.innerHTML = `
-            <div class="flex items-center justify-between mb-2">
-                <div class="flex items-center space-x-3">
-                    <i class="fas fa-grip-vertical layer-drag-handle text-sm text-gray-400 hover:text-neon-teal transition-colors cursor-move"></i>
-                    <span class="font-medium ${layerInfo.isPermanent ? 'text-amber-300' : 'text-white'} truncate text-sm">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2 flex-1 min-w-0">
+                    <i class="fas fa-grip-vertical layer-drag-handle text-sm text-gray-400 hover:text-neon-teal transition-colors cursor-move flex-shrink-0"></i>
+                    <button class="visibility-btn text-sm transition-all duration-200 cursor-pointer bg-transparent border-0 p-1 rounded hover:bg-white hover:bg-opacity-10 flex-shrink-0" data-layer="${layerId}" title="Toggle Visibility">
+                        <i class="fas ${layerInfo.visible ? 'fa-eye text-neon-teal hover:text-teal-300' : 'fa-eye-slash text-gray-500 hover:text-gray-400'}"></i>
+                    </button>
+                    <span class="font-medium ${layerInfo.isPermanent ? 'text-amber-300' : 'text-white'} truncate text-sm flex-1 min-w-0">
                         ${layerInfo.name}
                         ${layerInfo.isPermanent ? '<i class="fas fa-server text-xs ml-2 text-amber-400" title="Permanent layer from Supabase Storage"></i>' : ''}
                         ${layerInfo.fromDatabase && !layerInfo.isPermanent ? '<i class="fas fa-database text-xs ml-2 text-blue-400" title="Dynamic layer from database"></i>' : ''}
                     </span>
                 </div>
-                <div class="flex items-center space-x-2">
-                    <button class="symbology-btn text-neon-teal hover:text-teal-300 text-base transition-all duration-200 bg-transparent border-0 p-2 rounded hover:bg-neon-teal hover:bg-opacity-20" data-layer="${layerId}" title="Edit Symbology">
+                <div class="flex items-center space-x-1 flex-shrink-0 ml-2">
+                    <button class="rename-btn text-gray-400 hover:text-white text-sm transition-all duration-200 bg-transparent border-0 p-1.5 rounded hover:bg-white hover:bg-opacity-10 ${layerInfo.isPermanent ? 'opacity-50 cursor-not-allowed' : ''}" data-layer="${layerId}" title="${layerInfo.isPermanent ? 'Cannot rename permanent layers' : 'Rename layer'}" ${layerInfo.isPermanent ? 'disabled' : ''}>
+                        <i class="fas fa-font"></i>
+                    </button>
+                    <button class="delete-btn text-gray-400 hover:text-red-400 text-sm transition-all duration-200 bg-transparent border-0 p-1.5 rounded hover:bg-red-500 hover:bg-opacity-20 ${layerInfo.isPermanent ? 'opacity-50 cursor-not-allowed' : ''}" data-layer="${layerId}" title="${layerInfo.isPermanent ? 'Cannot delete permanent layers' : 'Delete layer'}" ${layerInfo.isPermanent ? 'disabled' : ''}>
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <button class="zoom-btn text-gray-400 hover:text-blue-400 text-sm transition-all duration-200 bg-transparent border-0 p-1.5 rounded hover:bg-blue-500 hover:bg-opacity-20" data-layer="${layerId}" title="Zoom to layer">
+                        <i class="fas fa-search-plus"></i>
+                    </button>
+                    ${layerInfo.sourceType !== 'wms' ? `<button class="symbology-btn text-neon-teal hover:text-teal-300 text-sm transition-all duration-200 bg-transparent border-0 p-1.5 rounded hover:bg-neon-teal hover:bg-opacity-20" data-layer="${layerId}" title="Edit Symbology">
                         <i class="fas fa-palette"></i>
-                    </button>
-                    <button class="visibility-btn text-base transition-all duration-200 cursor-pointer bg-transparent border-0 p-2 rounded hover:bg-white hover:bg-opacity-10" data-layer="${layerId}" title="Toggle Visibility">
-                        <i class="fas ${layerInfo.visible ? 'fa-eye text-neon-teal hover:text-teal-300' : 'fa-eye-slash text-gray-500 hover:text-gray-400'}"></i>
-                    </button>
+                    </button>` : ''}
                 </div>
             </div>
-            <div class="text-xs text-gray-400 mt-2 pl-7">
+            <div class="text-xs text-gray-400 mt-1 pl-8">
                 <span class="inline-flex items-center">
                     <i class="fas fa-layer-group text-xs mr-1 text-gray-500"></i>
-                    ${Object.keys(layerInfo.data.features || {}).length || layerInfo.data.features?.length || 0} features
+                    ${layerInfo.sourceType === 'wms' ? 'WMS Layer' : (Object.keys(layerInfo.data?.features || {}).length || layerInfo.data?.features?.length || 0) + ' features'}
                 </span>
                 ${layerInfo.isPermanent ? '<span class="ml-3 text-amber-400">• Storage</span>' : ''}
                 ${layerInfo.fromDatabase && !layerInfo.isPermanent ? '<span class="ml-3 text-blue-400">• Database</span>' : ''}
@@ -1054,35 +1391,75 @@ function updateLayersList() {
         });
 
         const symbologyBtn = layerDiv.querySelector('.symbology-btn');
-        symbologyBtn.addEventListener('click', (e) => {
+        if (symbologyBtn) {
+            symbologyBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Symbology button clicked for layer:', layerId);
+                try {
+                    openSymbologyEditor(layerId);
+                } catch (error) {
+                    console.error('Error opening symbology editor:', error);
+                    showError('Error opening symbology editor. Check console for details.', 'Symbology Error');
+                }
+            });
+        }
+
+        // Add rename button event listener
+        const renameBtn = layerDiv.querySelector('.rename-btn');
+        renameBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Symbology button clicked for layer:', layerId);
+            
+            // Don't proceed if it's a permanent layer
+            if (layerInfo.isPermanent) {
+                return;
+            }
+            
+            console.log('Rename button clicked for layer:', layerId);
             try {
-                openSymbologyEditor(layerId);
+                await renameLayer(layerId, layerInfo.name);
             } catch (error) {
-                console.error('Error opening symbology editor:', error);
-                showError('Error opening symbology editor. Check console for details.', 'Symbology Error');
+                console.error('Error renaming layer:', error);
+                showError('Error renaming layer. Check console for details.', 'Rename Error');
             }
         });
 
-        // Add right-click context menu listener to the layer item
-        layerDiv.addEventListener('contextmenu', (e) => {
-            console.log('🖱️ Layer context menu triggered for:', layerInfo.name);
+        // Add delete button event listener
+        const deleteBtn = layerDiv.querySelector('.delete-btn');
+        deleteBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             e.stopPropagation();
-            e.stopImmediatePropagation();
             
-            // Ensure we hide any existing context menus first
-            hideLayerContextMenu();
+            // Don't proceed if it's a permanent layer
+            if (layerInfo.isPermanent) {
+                return;
+            }
             
-            // Small delay to prevent immediate closing from the click event
-            setTimeout(() => {
-                showLayerContextMenu(e, layerId, layerInfo.name);
-            }, 10);
-            
-            return false;
+            console.log('Delete button clicked for layer:', layerId);
+            try {
+                await deleteLayer(layerId, layerInfo.name);
+            } catch (error) {
+                console.error('Error deleting layer:', error);
+                showError('Error deleting layer. Check console for details.', 'Delete Error');
+            }
         });
+
+        // Add zoom button event listener
+        const zoomBtn = layerDiv.querySelector('.zoom-btn');
+        zoomBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log('Zoom button clicked for layer:', layerId);
+            try {
+                window.zoomToLayer(layerId);
+            } catch (error) {
+                console.error('Error zooming to layer:', error);
+                showError('Error zooming to layer. Check console for details.', 'Zoom Error');
+            }
+        });
+
     });
     
     // Update map layer order after UI update
@@ -1255,9 +1632,9 @@ function reorderLayerWithPosition(draggedLayerId, targetLayerId, dropZone) {
         newOrder: [...layerOrder]
     });
     
-    // Update the UI and map rendering order
+    // Update the UI and map rendering order immediately for drag-and-drop
     updateLayersList();
-    updateMapLayerOrder();
+    updateMapLayerOrder(true); // Pass true for immediate update
     
     // Show feedback to user
     const draggedLayerInfo = layers.get(draggedLayerId);
@@ -1265,8 +1642,8 @@ function reorderLayerWithPosition(draggedLayerId, targetLayerId, dropZone) {
     const draggedLayerName = draggedLayerInfo ? draggedLayerInfo.name : 'Unknown';
     const targetLayerName = targetLayerInfo ? targetLayerInfo.name : 'Unknown';
     
-    const positionText = dropZone === 'top' ? 'above' : 'below';
-    showNotification(`Moved "${draggedLayerName}" ${positionText} "${targetLayerName}"`, 'success', 3000);
+    // Visual feedback is already provided by the panel reordering and map layer changes
+    // No notification needed as the user can see the result directly
 }
 
 // Enhanced reorder layers with full vertical reordering capability
@@ -1304,9 +1681,9 @@ function reorderLayer(draggedLayerId, targetLayerId) {
             newOrder: [...layerOrder]
         });
         
-        // Update the UI and map rendering order
+        // Update the UI and map rendering order immediately for drag-and-drop
         updateLayersList();
-        updateMapLayerOrder();
+        updateMapLayerOrder(true); // Pass true for immediate update
         
         // Show feedback to user
         const draggedLayerInfo = layers.get(draggedLayerId);
@@ -1314,8 +1691,8 @@ function reorderLayer(draggedLayerId, targetLayerId) {
         const draggedLayerName = draggedLayerInfo ? draggedLayerInfo.name : 'Unknown';
         const targetLayerName = targetLayerInfo ? targetLayerInfo.name : 'Unknown';
         
-        const moveDirection = draggedIndex < newTargetIndex ? 'down' : 'up';
-        showNotification(`Moved "${draggedLayerName}" ${moveDirection} relative to "${targetLayerName}"`, 'success', 3000);
+        // Visual feedback is already provided by the panel reordering and map layer changes
+        // No notification needed as the user can see the result directly
         
     } else if (draggedIndex === targetIndex) {
         console.log('No reordering needed - same position');
@@ -1328,37 +1705,94 @@ function reorderLayer(draggedLayerId, targetLayerId) {
     }
 }
 
-// Update map layer rendering order
-function updateMapLayerOrder() {
-    console.log('Updating map layer rendering order:', layerOrder);
+// Debounce timer for updateMapLayerOrder to prevent rapid successive calls
+let updateMapLayerOrderTimeout = null;
+
+// Core function to update map layer z-index without debouncing (for immediate updates)
+function updateMapLayerOrderImmediate() {
+    console.log('🔄 Immediately updating map layer rendering order:', {
+        layerOrder: layerOrder,
+        layerDetails: layerOrder.map(id => {
+            const info = window.layers.get(id);
+            return info ? { id, name: info.name, isPermanent: info.isPermanent, visible: info.visible } : { id, status: 'missing' };
+        })
+    });
     
-    // First, bring all layers to back to reset their z-index order
-    layerOrder.forEach((layerId) => {
+    // Apply z-index order in single pass to avoid interference from basemap operations
+    layerOrder.forEach((layerId, index) => {
         const layerInfo = window.layers.get(layerId);
         if (layerInfo && layerInfo.visible && layerInfo.layer) {
             try {
-                layerInfo.layer.bringToBack();
+                // Calculate z-index: topmost layer in panel (index 0) gets highest z-index
+                const zIndex = layerOrder.length - index;
+                
+                // Use setZIndexOffset for more reliable z-index control
+                if (typeof layerInfo.layer.setZIndexOffset === 'function') {
+                    layerInfo.layer.setZIndexOffset(zIndex * 100); // Multiply by 100 to avoid conflicts
+                } else {
+                    // Fallback to bringToFront/bringToBack for layers that don't support setZIndexOffset
+                    layerInfo.layer.bringToBack();
+                }
+                
+                const layerType = layerInfo.isPermanent ? 'Permanent' : 'User';
+                console.log(`🔺 Set ${layerType} layer "${layerInfo.name}" (${layerId}) z-index: ${zIndex} - Panel position: ${index + 1}/${layerOrder.length}`);
             } catch (error) {
-                console.warn(`Could not bring layer ${layerId} to back:`, error);
+                console.warn(`Could not set z-index for layer ${layerId}:`, error);
             }
         }
     });
     
-    // Then, bring layers to front in REVERSE order
-    const reversedOrder = [...layerOrder].reverse();
-    reversedOrder.forEach((layerId) => {
+    // Second pass: bring layers to front in REVERSE order for layers without setZIndexOffset support
+    [...layerOrder].reverse().forEach((layerId, reverseIndex) => {
         const layerInfo = window.layers.get(layerId);
         if (layerInfo && layerInfo.visible && layerInfo.layer) {
             try {
-                layerInfo.layer.bringToFront();
-                console.log(`Brought layer "${layerInfo.name}" (${layerId}) to front - Panel position: ${layerOrder.indexOf(layerId) + 1}`);
+                // Only use bringToFront for layers that don't support setZIndexOffset
+                if (typeof layerInfo.layer.setZIndexOffset !== 'function') {
+                    layerInfo.layer.bringToFront();
+                    const layerType = layerInfo.isPermanent ? 'Permanent' : 'User';
+                    const originalIndex = layerOrder.length - 1 - reverseIndex;
+                    console.log(`🔺 Brought ${layerType} layer "${layerInfo.name}" (${layerId}) to front - Panel position: ${originalIndex + 1}/${layerOrder.length}, z-index: ${reverseIndex + 1}`);
+                }
             } catch (error) {
                 console.warn(`Could not bring layer ${layerId} to front:`, error);
             }
         }
     });
     
-    console.log('Map layer rendering order updated successfully');
+    // Ensure basemap stays at the bottom after layer reordering
+    if (window.currentBasemap && typeof window.currentBasemap.bringToBack === 'function') {
+        try {
+            window.currentBasemap.bringToBack();
+            console.log('🗺️ Ensured basemap stays at bottom after layer reordering');
+        } catch (error) {
+            console.warn('Could not ensure basemap position:', error);
+        }
+    }
+    
+    console.log('✅ Map layer rendering order updated immediately');
+}
+
+// Update map layer rendering order (debounced version for bulk operations)
+function updateMapLayerOrder(immediate = false) {
+    // If immediate update is requested (e.g., from drag-and-drop), bypass debouncing
+    if (immediate) {
+        updateMapLayerOrderImmediate();
+        return;
+    }
+    
+    // Clear any pending updates to prevent race conditions
+    if (updateMapLayerOrderTimeout) {
+        clearTimeout(updateMapLayerOrderTimeout);
+    }
+    
+    // Debounce updates to prevent rapid successive calls for bulk operations
+    updateMapLayerOrderTimeout = setTimeout(() => {
+        // Use requestAnimationFrame to prevent race conditions and basemap interference
+        requestAnimationFrame(() => {
+            updateMapLayerOrderImmediate();
+        });
+    }, 50); // 50ms debounce delay for bulk operations
 }
 
 // Update selection layer dropdown with visible layers
@@ -1456,133 +1890,11 @@ function toggleLayerVisibility(layerId, visible) {
     }
 }
 
-// === LAYER CONTEXT MENU FUNCTIONS ===
 
 // Show layer context menu
-function showLayerContextMenu(event, layerId, layerName) {
-    console.log(`🎯 Showing context menu for layer:`, {
-        layerId: layerId,
-        layerName: layerName,
-        layerExists: layers.has(layerId),
-        eventType: event.type,
-        clientX: event.clientX,
-        clientY: event.clientY
-    });
+// DUPLICATE FUNCTION REMOVED - orphaned code statements have been cleaned up
 
-    if (!layerId || !layerName || !layers.has(layerId)) {
-        console.error('❌ Cannot show context menu: Invalid layer parameters');
-        return;
-    }
 
-    const contextMenu = document.getElementById('layerContextMenu');
-    if (!contextMenu) {
-        console.error('❌ Layer context menu element not found in DOM!');
-        return;
-    }
-
-    const deleteItem = document.getElementById('contextDelete');
-    const renameItem = document.getElementById('contextRename');
-    
-    if (!deleteItem || !renameItem) {
-        console.error('❌ Context menu items not found in DOM!');
-        return;
-    }
-    
-    // Set context variables
-    currentContextLayerId = layerId;
-    currentContextLayerName = layerName;
-    
-    console.log(`📝 Set context variables:`, {
-        currentContextLayerId,
-        currentContextLayerName
-    });
-    
-    const layerInfo = window.layers.get(layerId);
-    const isPermanentLayer = layerInfo && layerInfo.isPermanent;
-    
-    // Update menu item states
-    if (isPermanentLayer) {
-        deleteItem.classList.add('disabled');
-        renameItem.classList.add('disabled');
-        console.log('🔒 Disabled delete/rename for permanent layer');
-    } else {
-        deleteItem.classList.remove('disabled');
-        renameItem.classList.remove('disabled');
-        console.log('✅ Enabled delete/rename for dynamic layer');
-    }
-    
-    // Hide any existing menus first
-    hideLayerContextMenu();
-    const mapContextMenu = document.getElementById('mapContextMenu');
-    if (mapContextMenu) {
-        mapContextMenu.style.display = 'none';
-    }
-    
-    // Position the context menu at cursor location
-    contextMenu.style.position = 'fixed';
-    contextMenu.style.zIndex = '10001';
-    contextMenu.style.display = 'block';
-    contextMenu.style.left = event.clientX + 'px';
-    contextMenu.style.top = event.clientY + 'px';
-    
-    console.log(`📍 Initial menu position: ${event.clientX}, ${event.clientY}`);
-    
-    // Force reflow to get accurate dimensions
-    contextMenu.offsetHeight;
-    
-    // Ensure menu stays within viewport
-    const rect = contextMenu.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const padding = 10;
-    
-    let adjustedX = event.clientX;
-    let adjustedY = event.clientY;
-    
-    if (rect.right > viewportWidth - padding) {
-        adjustedX = event.clientX - rect.width;
-        if (adjustedX < padding) {
-            adjustedX = padding;
-        }
-        console.log('↔️ Adjusted menu position horizontally');
-    }
-    
-    if (rect.bottom > viewportHeight - padding) {
-        adjustedY = event.clientY - rect.height;
-        if (adjustedY < padding) {
-            adjustedY = padding;
-        }
-        console.log('↕️ Adjusted menu position vertically');
-    }
-    
-    contextMenu.style.left = adjustedX + 'px';
-    contextMenu.style.top = adjustedY + 'px';
-    
-    // Add active class for animations
-    contextMenu.classList.add('context-menu-active');
-    
-    console.log(`✅ Layer context menu displayed at: ${adjustedX}, ${adjustedY}`);
-    
-    // Stop event propagation
-    event.stopPropagation();
-    event.stopImmediatePropagation();
-}
-
-// Hide layer context menu
-function hideLayerContextMenu() {
-    const contextMenu = document.getElementById('layerContextMenu');
-    if (contextMenu) {
-        contextMenu.style.display = 'none';
-        contextMenu.classList.remove('context-menu-active');
-        console.log('🙈 Layer context menu hidden');
-    }
-}
-
-// Reset context menu variables
-function resetContextMenuVariables() {
-    currentContextLayerId = null;
-    currentContextLayerName = null;
-}
 
 // Setup context menu event listeners
 
@@ -1606,268 +1918,8 @@ function zoomToLayer(layerId) {
     }
 }
 
-// Delete layer function
-async function deleteLayer(layerId, layerName) {
-    console.log(`Starting deleteLayer function:`, {
-        layerId: layerId,
-        layerName: layerName,
-        layersMapSize: layers.size,
-        layerExists: layers.has(layerId)
-    });
 
-    if (!layerId || !layerName || !layers.has(layerId)) {
-        const errorMsg = `Cannot delete layer: Invalid parameters`;
-        console.error(errorMsg);
-        showNotification(errorMsg, 'error');
-        return;
-    }
 
-    const layerInfo = window.layers.get(layerId);
-    if (!layerInfo) {
-        const errorMsg = `Layer info for "${layerName}" is null or undefined`;
-        console.error(errorMsg);
-        showNotification(errorMsg, 'error');
-        return;
-    }
-
-    // Prevent deletion of permanent layers
-    if (layerInfo.isPermanent) {
-        const msg = `"${layerName}" is a permanent layer and cannot be deleted.`;
-        console.log(msg);
-        showNotification(msg, 'info');
-        return;
-    }
-
-    // Confirm deletion
-    const confirmed = await showConfirm(`Are you sure you want to delete the layer "${layerName}"?`, 'Delete Layer');
-    if (confirmed) {
-        console.log(`Starting deletion process for layer:`, {
-            layerId: layerId,
-            layerName: layerName,
-            databaseId: layerInfo.databaseId,
-            isPermanent: layerInfo.isPermanent,
-            fromDatabase: layerInfo.fromDatabase
-        });
-        
-        try {
-            // Delete from database first (if it's a dynamic layer)
-            if (supabase && !layerInfo.isPermanent) {
-                const shouldDeleteFromDB = layerInfo.fromDatabase || layerInfo.databaseId;
-                
-                if (shouldDeleteFromDB) {
-                    console.log(`Deleting layer "${layerName}" from database...`);
-                    const deleteResult = await deleteDynamicLayerFromDatabase(layerId, layerName);
-                    
-                    if (!deleteResult.success) {
-                        console.error(`Database deletion failed:`, deleteResult.error);
-                        const fallbackConfirmed = await showConfirm(`Failed to delete layer from database: ${deleteResult.error}\n\nDo you want to delete it locally anyway?`, 'Database Deletion Failed');
-                        if (fallbackConfirmed) {
-                            console.log('User chose to delete locally despite database error');
-                        } else {
-                            return;
-                        }
-                    } else {
-                        console.log(`Layer "${layerName}" successfully deleted from database`);
-                    }
-                } else {
-                    console.log(`Layer "${layerName}" is local-only, no database deletion needed`);
-                }
-            } else if (layerInfo.isPermanent) {
-                console.log(`Layer "${layerName}" is permanent, skipping database deletion`);
-            }
-
-            // Remove layer from map
-            if (layerInfo.layer) {
-                map.removeLayer(layerInfo.layer);
-                console.log(`Layer "${layerName}" removed from map`);
-            }
-            
-            // Remove from layers collection
-            layers.delete(layerId);
-            console.log(`Layer "${layerName}" removed from layers collection`);
-            
-            // Remove from layer order
-            const orderIndex = layerOrder.indexOf(layerId);
-            if (orderIndex !== -1) {
-                layerOrder.splice(orderIndex, 1);
-                console.log(`Layer "${layerName}" removed from layer order at index ${orderIndex}`);
-            }
-            
-            // Remove any active filters for this layer
-            if (activeFilters && activeFilters.has(layerId)) {
-                activeFilters.delete(layerId);
-                console.log(`Filters removed for layer "${layerName}"`);
-            }
-            
-            // If this layer was selected for selection tool, deactivate it
-            if (typeof activeSelectionLayerId !== 'undefined' && activeSelectionLayerId === layerId) {
-                activeSelectionLayerId = null;
-                if (typeof isSelectionActive !== 'undefined' && isSelectionActive) {
-                    deactivateSelectionTool();
-                }
-                console.log(`Selection tool deactivated for deleted layer "${layerName}"`);
-            }
-            
-            // Update UI
-            updateLayersList();
-            enhancedUpdateLegend();
-            updateSelectionLayerDropdown();
-            populateFilterLayers();
-            
-            console.log(`Layer "${layerName}" (${layerId}) deleted successfully`);
-            
-            // Show success notification
-            showNotification(`Layer "${layerName}" deleted successfully`, 'success');
-            
-        } catch (error) {
-            console.error('Error during layer deletion:', error);
-            showNotification(`Error deleting layer "${layerName}": ${error.message}`, 'error');
-        }
-    }
-}
-
-// Rename layer function
-async function renameLayer(layerId, currentName) {
-    console.log(`Starting renameLayer function:`, {
-        layerId: layerId,
-        currentName: currentName,
-        layerExists: layers.has(layerId)
-    });
-
-    if (!layerId || !currentName || !layers.has(layerId)) {
-        console.error('Cannot rename layer: Invalid parameters');
-        showNotification('Cannot rename layer: Invalid parameters.', 'error');
-        return;
-    }
-
-    const layerInfo = window.layers.get(layerId);
-    if (!layerInfo) {
-        const errorMsg = `Layer info for "${currentName}" is null or undefined`;
-        console.error(errorMsg);
-        showNotification(errorMsg, 'error');
-        return;
-    }
-
-    // Prevent renaming of permanent layers
-    if (layerInfo.isPermanent) {
-        const msg = `"${currentName}" is a permanent layer and cannot be renamed.`;
-        console.log(msg);
-        showNotification(msg, 'info');
-        return;
-    }
-
-    // Prompt user for new name
-    const newName = await showPrompt(`Enter new name for layer "${currentName}":`, currentName, 'Rename Layer');
-    
-    if (newName === null) {
-        return;
-    }
-    
-    if (newName.trim() === '') {
-        showNotification('Layer name cannot be empty.', 'error');
-        return;
-    }
-    
-    if (newName.trim() === currentName) {
-        return;
-    }
-
-    const trimmedNewName = newName.trim();
-
-    // Check if another layer already has this name
-    const existingLayerWithName = Array.from(layers.values()).find(layer => 
-        layer.name === trimmedNewName && layer !== layerInfo
-    );
-    
-    if (existingLayerWithName) {
-        showNotification(`A layer named "${trimmedNewName}" already exists.`, 'error');
-        return;
-    }
-
-    try {
-        console.log(`Renaming layer from "${currentName}" to "${trimmedNewName}"`);
-
-        // Update the layer name locally
-        layerInfo.name = trimmedNewName;
-        
-        // Update database if layer is from database or has been saved
-        if (supabase && (layerInfo.fromDatabase || layerInfo.databaseId)) {
-            console.log(`Updating layer name in database...`);
-            const updateResult = await updateLayerNameInDatabase(layerId, trimmedNewName);
-            if (!updateResult.success) {
-                console.error('Failed to update layer name in database:', updateResult.error);
-                showNotification(`Layer renamed locally, but failed to update in database: ${updateResult.error}`, 'error');
-            }
-        }
-
-        // Update the UI
-        updateLayersList();
-        updateSelectionLayerDropdown();
-        enhancedUpdateLegend();
-
-        // Show success notification
-        showNotification(`Layer renamed to "${trimmedNewName}" successfully`, 'success', 2000);
-        
-        console.log(`Layer renamed successfully:`, {
-            layerId: layerId,
-            oldName: currentName,
-            newName: trimmedNewName
-        });
-
-    } catch (error) {
-        console.error('Error renaming layer:', error);
-        showNotification(`Error renaming layer: ${error.message}`, 'error');
-        
-        // Revert local name change if error occurred
-        layerInfo.name = currentName;
-    }
-}
-
-// Update layer name in database
-async function updateLayerNameInDatabase(layerId, newName) {
-    try {
-        if (!currentUser) {
-            console.error('User not authenticated, cannot update layer name');
-            return { success: false, error: 'User not authenticated' };
-        }
-
-        const layerInfo = window.layers.get(layerId);
-        if (!layerInfo) {
-            return { success: false, error: 'Layer not found in local storage' };
-        }
-
-        console.log(`Attempting to update layer name in database:`, {
-            localLayerId: layerId,
-            databaseId: layerInfo.databaseId,
-            newName: newName,
-            userId: currentUser.id
-        });
-
-        let query = supabase.from('layers').update({
-            name: newName,
-            updated_at: new Date().toISOString()
-        }).eq('user_id', currentUser.id);
-
-        if (layerInfo.databaseId) {
-            query = query.eq('id', layerInfo.databaseId);
-        } else {
-            query = query.eq('layer_id', layerId);
-        }
-
-        const { data, error } = await query;
-
-        if (error) {
-            console.error('Error updating layer name in database:', error);
-            return { success: false, error: `Database error: ${error.message}` };
-        } else {
-            console.log('Layer name updated in database successfully');
-            return { success: true };
-        }
-    } catch (error) {
-        console.error('Network error updating layer name in database:', error);
-        return { success: false, error: `Network error: ${error.message}` };
-    }
-}
 
 // Note: updateLegend functionality moved to enhancedUpdateLegend function
 
@@ -2139,6 +2191,12 @@ function watchLayerChanges() {
         window.layers.set = function(key, value) {
             const result = originalSet.call(this, key, value);
             scheduleRealTimeLegendUpdate();
+            
+            // Refresh label system if available
+            if (typeof window.refreshLabelsOnLayerChange === 'function') {
+                window.refreshLabelsOnLayerChange();
+            }
+            
             return result;
         };
         
@@ -2147,6 +2205,12 @@ function watchLayerChanges() {
         window.layers.delete = function(key) {
             const result = originalDelete.call(this, key);
             scheduleRealTimeLegendUpdate();
+            
+            // Refresh label system if available
+            if (typeof window.refreshLabelsOnLayerChange === 'function') {
+                window.refreshLabelsOnLayerChange();
+            }
+            
             return result;
         };
     }
@@ -2217,8 +2281,11 @@ function initializeRealTimeLegendUpdates() {
 // Toggle visibility of a specific category in a categorical layer
 function toggleCategoryVisibility(layerId, categoryValue, categoryElement) {
     const layerInfo = window.layers.get(layerId);
-    if (!layerInfo || !layerInfo.classification || !layerInfo.classification.colorMap) {
-        console.warn(`Layer ${layerId} does not have categorical classification`);
+    
+    // Get classification data from multiple sources
+    const classificationData = extractClassificationData(layerInfo);
+    if (!layerInfo || !classificationData) {
+        console.warn(`Layer ${layerId} does not have categorical classification data`);
         return;
     }
     
@@ -2228,32 +2295,84 @@ function toggleCategoryVisibility(layerId, categoryValue, categoryElement) {
     }
     
     const isCurrentlyHidden = layerInfo.hiddenCategories.has(categoryValue);
-    const statusIndicator = categoryElement.querySelector('.toggle-status');
+    const eyeIndicator = categoryElement.querySelector('.toggle-eye');
     const colorSwatch = categoryElement.querySelector('.legend-color-toggle');
+    const categoryLabel = categoryElement.querySelector('span');
     
     if (isCurrentlyHidden) {
         // Show this category
         layerInfo.hiddenCategories.delete(categoryValue);
-        statusIndicator.className = 'toggle-status w-3 h-3 rounded-full bg-green-500';
-        statusIndicator.title = 'Category is visible';
-        colorSwatch.style.opacity = '1';
-        colorSwatch.style.filter = 'none';
+        
+        // Update UI with smooth transitions
+        if (eyeIndicator) {
+            eyeIndicator.className = 'toggle-eye fas fa-eye text-green-400 text-sm cursor-pointer hover:scale-110 transition-all';
+            eyeIndicator.title = 'Click to hide category';
+        }
+        if (colorSwatch) {
+            colorSwatch.style.opacity = '1';
+            colorSwatch.style.transform = 'scale(1)';
+            colorSwatch.style.filter = 'none';
+        }
+        if (categoryLabel) {
+            categoryLabel.className = 'text-xs flex-1 transition-colors text-gray-300';
+        }
+        
+        // Update container styling
+        categoryElement.style.opacity = '1';
+        categoryElement.style.backgroundColor = 'transparent';
+        categoryElement.classList.remove('legend-item-hidden');
+        
     } else {
         // Hide this category
         layerInfo.hiddenCategories.add(categoryValue);
-        statusIndicator.className = 'toggle-status w-3 h-3 rounded-full bg-gray-500';
-        statusIndicator.title = 'Category is hidden';
-        colorSwatch.style.opacity = '0.3';
-        colorSwatch.style.filter = 'grayscale(1)';
+        
+        // Update UI with smooth transitions
+        if (eyeIndicator) {
+            eyeIndicator.className = 'toggle-eye fas fa-eye-slash text-red-400 text-sm cursor-pointer hover:scale-110 transition-all';
+            eyeIndicator.title = 'Click to show category';
+        }
+        if (colorSwatch) {
+            colorSwatch.style.opacity = '0.3';
+            colorSwatch.style.transform = 'scale(0.9)';
+            colorSwatch.style.filter = 'grayscale(1)';
+        }
+        if (categoryLabel) {
+            categoryLabel.className = 'text-xs flex-1 transition-colors text-gray-500 line-through';
+        }
+        
+        // Update container styling
+        categoryElement.style.opacity = '0.6';
+        categoryElement.style.backgroundColor = 'rgba(107, 114, 128, 0.1)';
+        categoryElement.classList.add('legend-item-hidden');
     }
     
     // Re-apply layer styling to map with updated visibility
-    reapplyLayerStyling(layerId);
+    try {
+        const updateResult = updateLayerCategoryVisibility(layerId);
+        
+        // Only show error if there was an actual failure, not just a warning
+        if (updateResult === false) {
+            console.warn(`Warning: Could not update category visibility for layer ${layerId}, but UI changes applied`);
+        }
+        
+        // Force a map refresh to ensure changes are visible immediately
+        if (layerInfo.layer && map.hasLayer(layerInfo.layer)) {
+            layerInfo.layer.redraw();
+        }
+        
+        // Trigger real-time legend update
+        scheduleRealTimeLegendUpdate();
+        
+        console.log(`✅ Successfully toggled category "${categoryValue}" for layer "${layerInfo.name}"`);
+    } catch (error) {
+        console.error('Error updating layer category visibility:', error);
+        // Don't prevent the UI updates from happening even if there's an error
+    }
     
-    // Trigger real-time legend update
-    scheduleRealTimeLegendUpdate();
-    
-    console.log(`🎨 Toggled category "${categoryValue}" visibility for layer "${layerInfo.name}": ${isCurrentlyHidden ? 'shown' : 'hidden'}`);
+    // Visual feedback is provided through the eye icon and styling changes
+    // No notification popup needed as the change is immediately visible
+    const action = isCurrentlyHidden ? 'shown' : 'hidden';
+    console.log(`🎨 Toggled category "${categoryValue}" visibility for layer "${layerInfo.name}": ${action}`);
 }
 
 // Toggle visibility of all categories in a categorical layer
@@ -2282,10 +2401,10 @@ function toggleAllCategories(layerId) {
         // Show all categories
         layerInfo.hiddenCategories.clear();
         categoryItems.forEach(item => {
-            const statusIndicator = item.querySelector('.toggle-status');
+            const eyeIndicator = item.querySelector('.toggle-eye');
             const colorSwatch = item.querySelector('.legend-color-toggle');
-            statusIndicator.className = 'toggle-status w-3 h-3 rounded-full bg-green-500';
-            statusIndicator.title = 'Category is visible';
+            eyeIndicator.className = 'toggle-eye fas fa-eye text-green-400 text-sm cursor-pointer hover:scale-110 transition-all';
+            eyeIndicator.title = 'Click to hide category';
             colorSwatch.style.opacity = '1';
             colorSwatch.style.filter = 'none';
         });
@@ -2294,10 +2413,10 @@ function toggleAllCategories(layerId) {
         // Hide all categories
         colorMapKeys.forEach(key => layerInfo.hiddenCategories.add(key));
         categoryItems.forEach(item => {
-            const statusIndicator = item.querySelector('.toggle-status');
+            const eyeIndicator = item.querySelector('.toggle-eye');
             const colorSwatch = item.querySelector('.legend-color-toggle');
-            statusIndicator.className = 'toggle-status w-3 h-3 rounded-full bg-gray-500';
-            statusIndicator.title = 'Category is hidden';
+            eyeIndicator.className = 'toggle-eye fas fa-eye-slash text-red-400 text-sm cursor-pointer hover:scale-110 transition-all';
+            eyeIndicator.title = 'Click to show category';
             colorSwatch.style.opacity = '0.3';
             colorSwatch.style.filter = 'grayscale(1)';
         });
@@ -2321,6 +2440,7 @@ function reapplyLayerStyling(layerId) {
     
     // Create new layer with updated styling
     const newLayer = L.geoJSON(layerInfo.data, {
+        renderer: L.canvas(), // Force canvas rendering for export compatibility
         style: (feature) => {
             // Get the original style function
             const baseStyle = layerInfo.style || {};
@@ -2348,7 +2468,7 @@ function reapplyLayerStyling(layerId) {
                     color: layerInfo.classification.strokeColor || baseStyle.color || '#ffffff',
                     weight: layerInfo.classification.strokeWidth || baseStyle.weight || 2,
                     opacity: baseStyle.opacity || 1,
-                    fillOpacity: baseStyle.fillOpacity || 0.7
+                    fillOpacity: baseStyle.fillOpacity || 1.0
                 };
             }
             
@@ -2380,7 +2500,7 @@ function reapplyLayerStyling(layerId) {
                     color: layerInfo.classification.strokeColor || style.color || '#ffffff',
                     weight: layerInfo.classification.strokeWidth || style.weight || 2,
                     opacity: style.opacity || 1,
-                    fillOpacity: style.fillOpacity || 0.7
+                    fillOpacity: style.fillOpacity || 1.0
                 });
             }
             
@@ -2413,6 +2533,11 @@ function reapplyLayerStyling(layerId) {
     layerInfo.layer = newLayer;
     if (layerInfo.visible) {
         newLayer.addTo(map);
+        
+        // Track layer loading for loading overlay
+        if (typeof window.trackLayerLoading === 'function') {
+            window.trackLayerLoading(newLayer, layerId);
+        }
     }
     
     // Update map layer order to maintain correct z-index
@@ -2434,21 +2559,71 @@ window.clearOldLayerCaches = clearOldLayerCaches;
 window.loadInitialData = loadInitialData;
 window.loadPermanentLayersWithSymbology = loadPermanentLayersWithSymbology;
 window.loadSinglePermanentLayer = loadSinglePermanentLayer;
+window.refreshPermanentLayerSymbology = refreshPermanentLayerSymbology;
+window.applyStoredSymbologyToLayer = applyStoredSymbologyToLayer;
 window.getUserStyleForLayer = getUserStyleForLayer;
 window.saveUserStyleForLayer = saveUserStyleForLayer;
 window.updateLayersList = updateLayersList;
 window.setupLayerDragDrop = setupLayerDragDrop;
 window.reorderLayer = reorderLayer;
 window.updateMapLayerOrder = updateMapLayerOrder;
+window.updateMapLayerOrderImmediate = updateMapLayerOrderImmediate;
 window.updateSelectionLayerDropdown = updateSelectionLayerDropdown;
 window.toggleLayerVisibility = toggleLayerVisibility;
-window.showLayerContextMenu = showLayerContextMenu;
-window.hideLayerContextMenu = hideLayerContextMenu;
-window.resetContextMenuVariables = resetContextMenuVariables;
-window.setupLayerContextMenuListeners = setupLayerContextMenuListeners;
 window.zoomToLayer = zoomToLayer;
 window.deleteLayer = deleteLayer;
 window.renameLayer = renameLayer;
+// Update layer name in database
+async function updateLayerNameInDatabase(layerId, newName) {
+    const layerInfo = window.layers.get(layerId);
+    if (!layerInfo) {
+        return false;
+    }
+
+    // Check if this is a dynamic layer that should be saved to database
+    const shouldUpdateDatabase = layerInfo.isUserGenerated || layerInfo.isFilteredSelection;
+    if (!shouldUpdateDatabase || !window.supabase || !window.currentUser) {
+        return false;
+    }
+
+    try {
+        // First, try to update by database ID if available
+        if (layerInfo.databaseId) {
+            const { error } = await supabase
+                .from('layers')
+                .update({ name: newName })
+                .eq('id', layerInfo.databaseId)
+                .eq('user_id', currentUser.id);
+            
+            if (error) {
+                console.error('Error updating layer name in database by ID:', error);
+                return false;
+            }
+            
+            console.log('Layer name updated in database by ID');
+            return true;
+        } else {
+            // If no database ID, try to find and update by current name
+            const { error } = await supabase
+                .from('layers')
+                .update({ name: newName })
+                .eq('name', layerInfo.name)
+                .eq('user_id', currentUser.id);
+            
+            if (error) {
+                console.error('Error updating layer name in database by name:', error);
+                return false;
+            }
+            
+            console.log('Layer name updated in database by name');
+            return true;
+        }
+    } catch (error) {
+        console.error('Database error during layer name update:', error);
+        return false;
+    }
+}
+
 window.updateLayerNameInDatabase = updateLayerNameInDatabase;
 window.updateLegend = enhancedUpdateLegend;
 window.toggleCategoryVisibility = toggleCategoryVisibility;
@@ -2475,9 +2650,6 @@ console.log('   CREATE INDEX IF NOT EXISTS idx_layers_user_created ON layers(use
 
 // Validate critical functions are available
 const criticalFunctions = [
-    'setupLayerContextMenuListeners',
-    'hideLayerContextMenu', 
-    'showLayerContextMenu',
     'updateLayersList',
     'addDataToMap',
     'loadInitialData'
@@ -2491,165 +2663,10 @@ criticalFunctions.forEach(funcName => {
     }
 });
 
-// === LAYER CONTEXT MENU FUNCTIONS ===
 
-// Global variables for context menu
-let currentContextLayerId = null;
-let currentContextLayerName = null;
 
-// Show layer context menu
-function showLayerContextMenu(event, layerId, layerName) {
-    const contextMenu = document.getElementById('layerContextMenu');
-    if (!contextMenu) {
-        console.error('Context menu element not found');
-        return;
-    }
 
-    // Store current context layer info
-    currentContextLayerId = layerId;
-    currentContextLayerName = layerName;
-    
-    const layerInfo = window.layers.get(layerId);
-    if (!layerInfo) {
-        console.error('Layer info not found for context menu');
-        return;
-    }
 
-    // Update menu items based on layer type
-    const renameItem = document.getElementById('contextRename');
-    const deleteItem = document.getElementById('contextDelete');
-    
-    if (layerInfo.isPermanent) {
-        // Disable rename and delete for permanent layers
-        renameItem.classList.add('disabled');
-        deleteItem.classList.add('disabled');
-        renameItem.title = 'Cannot rename permanent layers';
-        deleteItem.title = 'Cannot delete permanent layers';
-    } else {
-        // Enable rename and delete for dynamic layers
-        renameItem.classList.remove('disabled');
-        deleteItem.classList.remove('disabled');
-        renameItem.title = 'Rename this layer';
-        deleteItem.title = 'Delete this layer';
-    }
-
-    // Position the context menu
-    const x = event.clientX;
-    const y = event.clientY;
-    
-    // Get viewport dimensions
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const menuWidth = 160; // Approximate width of context menu
-    const menuHeight = 150; // Approximate height of context menu
-    
-    // Adjust position to keep menu within viewport
-    let adjustedX = x;
-    let adjustedY = y;
-    
-    if (x + menuWidth > viewportWidth) {
-        adjustedX = x - menuWidth;
-    }
-    
-    if (y + menuHeight > viewportHeight) {
-        adjustedY = y - menuHeight;
-    }
-    
-    // Ensure menu doesn't go off-screen
-    adjustedX = Math.max(0, adjustedX);
-    adjustedY = Math.max(0, adjustedY);
-
-    contextMenu.style.left = adjustedX + 'px';
-    contextMenu.style.top = adjustedY + 'px';
-    contextMenu.style.display = 'block';
-    
-    // Add active class for animation
-    setTimeout(() => {
-        contextMenu.classList.add('context-menu-active');
-    }, 10);
-    
-    console.log(`Context menu shown for layer: ${layerName} (${layerId})`);
-}
-
-// Hide layer context menu
-function hideLayerContextMenu() {
-    const contextMenu = document.getElementById('layerContextMenu');
-    if (contextMenu) {
-        contextMenu.classList.remove('context-menu-active');
-        setTimeout(() => {
-            contextMenu.style.display = 'none';
-        }, 150); // Match animation duration
-    }
-    
-    // Clear context variables
-    currentContextLayerId = null;
-    currentContextLayerName = null;
-}
-
-// Setup context menu event listeners
-function setupLayerContextMenuListeners() {
-    const contextMenu = document.getElementById('layerContextMenu');
-    if (!contextMenu) {
-        console.error('Context menu element not found during setup');
-        return;
-    }
-
-    // Prevent context menu from closing when clicking inside it
-    contextMenu.addEventListener('click', function(e) {
-        e.stopPropagation();
-        console.log('🖱️ Click inside layer context menu - preventing propagation');
-    });
-
-    // Zoom to Layer
-    const zoomToLayerItem = document.getElementById('contextZoomToLayer');
-    if (zoomToLayerItem) {
-        zoomToLayerItem.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (currentContextLayerId) {
-                zoomToLayer(currentContextLayerId);
-                hideLayerContextMenu();
-            }
-        });
-    }
-
-    // Rename Layer
-    const renameItem = document.getElementById('contextRename');
-    if (renameItem) {
-        renameItem.addEventListener('click', async (e) => {
-            e.preventDefault();
-            if (currentContextLayerId && !renameItem.classList.contains('disabled')) {
-                await renameLayer(currentContextLayerId, currentContextLayerName);
-                hideLayerContextMenu();
-            }
-        });
-    }
-
-    // Properties (Open Symbology Editor)
-    const propertiesItem = document.getElementById('contextProperties');
-    if (propertiesItem) {
-        propertiesItem.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (currentContextLayerId) {
-                openSymbologyEditor(currentContextLayerId);
-                hideLayerContextMenu();
-            }
-        });
-    }
-
-    // Delete Layer
-    const deleteItem = document.getElementById('contextDelete');
-    if (deleteItem) {
-        deleteItem.addEventListener('click', async (e) => {
-            e.preventDefault();
-            if (currentContextLayerId && !deleteItem.classList.contains('disabled')) {
-                await deleteLayer(currentContextLayerId, currentContextLayerName);
-                hideLayerContextMenu();
-            }
-        });
-    }
-
-    console.log('✅ Layer context menu listeners setup complete');
-}
 
 // Zoom to layer function
 function zoomToLayer(layerId) {
@@ -2670,7 +2687,7 @@ function zoomToLayer(layerId) {
                 duration: 0.5
             });
             console.log(`Zoomed to layer: ${layerInfo.name}`);
-            showNotification(`Zoomed to layer: ${layerInfo.name}`, 'success');
+            // Zoomed to layer
         } else {
             console.warn('Layer bounds are not valid:', layerId);
             showNotification('Cannot zoom to layer - invalid bounds', 'warning');
@@ -2715,19 +2732,42 @@ async function renameLayer(layerId, currentName) {
             // Update layer name in memory
             layerInfo.name = trimmedName;
             
-            // Update database if it's a dynamic layer
-            if (layerInfo.fromDatabase && layerInfo.databaseId) {
-                const { error } = await supabase
-                    .from('layers')
-                    .update({ name: trimmedName })
-                    .eq('id', layerInfo.databaseId)
-                    .eq('user_id', currentUser.id);
-                
-                if (error) {
-                    console.error('Error updating layer name in database:', error);
-                    showNotification('Layer renamed locally but failed to update database', 'warning');
-                } else {
-                    console.log('Layer name updated in database');
+            // Update database if it's a dynamic layer that should be saved
+            const shouldUpdateDatabase = layerInfo.isUserGenerated || layerInfo.isFilteredSelection;
+            if (shouldUpdateDatabase && window.supabase && window.currentUser) {
+                try {
+                    // First, try to update by database ID if available
+                    if (layerInfo.databaseId) {
+                        const { error } = await supabase
+                            .from('layers')
+                            .update({ name: trimmedName })
+                            .eq('id', layerInfo.databaseId)
+                            .eq('user_id', currentUser.id);
+                        
+                        if (error) {
+                            console.error('Error updating layer name in database by ID:', error);
+                            showNotification('Layer renamed locally but failed to update database', 'warning');
+                        } else {
+                            console.log('Layer name updated in database by ID');
+                        }
+                    } else {
+                        // If no database ID, try to find and update by current name
+                        const { error } = await supabase
+                            .from('layers')
+                            .update({ name: trimmedName })
+                            .eq('name', currentName)
+                            .eq('user_id', currentUser.id);
+                        
+                        if (error) {
+                            console.error('Error updating layer name in database by name:', error);
+                            showNotification('Layer renamed locally but failed to update database', 'warning');
+                        } else {
+                            console.log('Layer name updated in database by name');
+                        }
+                    }
+                } catch (dbError) {
+                    console.error('Database error during layer rename:', dbError);
+                    showNotification('Layer renamed locally but database update failed', 'warning');
                 }
             }
 
@@ -2738,7 +2778,7 @@ async function renameLayer(layerId, currentName) {
             populateFilterLayers();
             
             console.log(`Layer renamed from "${currentName}" to "${trimmedName}"`);
-            showNotification(`Layer renamed to "${trimmedName}"`, 'success');
+            // Layer renamed
         }
     } catch (error) {
         console.error('Error renaming layer:', error);
@@ -2805,7 +2845,7 @@ async function deleteLayer(layerId, layerName) {
             populateFilterLayers();
             
             console.log(`Layer deleted: ${layerName} (${layerId})`);
-            showNotification(`Layer "${layerName}" deleted successfully`, 'success');
+            // Layer deleted
         }
     } catch (error) {
         console.error('Error deleting layer:', error);
@@ -2814,69 +2854,6 @@ async function deleteLayer(layerId, layerName) {
 }
 
 // Note: Selection dropdown functionality handled by updateSelectionLayerDropdown function
-
-// === LEGEND TOGGLE FUNCTIONS ===
-
-// Toggle visibility of a specific category in a categorical layer
-function toggleCategoryVisibility(layerId, categoryValue, categoryItem) {
-    const layerInfo = window.layers.get(layerId);
-    if (!layerInfo || !layerInfo.layer) {
-        console.error('Layer not found for category toggle:', layerId);
-        return;
-    }
-
-    console.log(`Toggling category visibility: ${categoryValue} in layer ${layerInfo.name}`);
-
-    // Initialize hidden categories set if it doesn't exist
-    if (!layerInfo.hiddenCategories) {
-        layerInfo.hiddenCategories = new Set();
-    }
-
-    const isCurrentlyHidden = layerInfo.hiddenCategories.has(categoryValue);
-    
-    if (isCurrentlyHidden) {
-        // Show the category
-        layerInfo.hiddenCategories.delete(categoryValue);
-        categoryItem.classList.remove('legend-item-hidden');
-        
-        // Update visual indicators
-        const statusIndicator = categoryItem.querySelector('.toggle-status');
-        const colorSwatch = categoryItem.querySelector('.legend-color-toggle');
-        if (statusIndicator) {
-            statusIndicator.className = 'toggle-status w-3 h-3 rounded-full bg-green-500';
-            statusIndicator.title = 'Category is visible';
-        }
-        if (colorSwatch) {
-            colorSwatch.style.opacity = '1';
-        }
-        
-        console.log(`Showing category: ${categoryValue}`);
-    } else {
-        // Hide the category
-        layerInfo.hiddenCategories.add(categoryValue);
-        categoryItem.classList.add('legend-item-hidden');
-        
-        // Update visual indicators
-        const statusIndicator = categoryItem.querySelector('.toggle-status');
-        const colorSwatch = categoryItem.querySelector('.legend-color-toggle');
-        if (statusIndicator) {
-            statusIndicator.className = 'toggle-status w-3 h-3 rounded-full bg-red-500';
-            statusIndicator.title = 'Category is hidden';
-        }
-        if (colorSwatch) {
-            colorSwatch.style.opacity = '0.3';
-        }
-        
-        console.log(`Hiding category: ${categoryValue}`);
-    }
-
-    // Apply the visibility changes to the layer
-    updateLayerCategoryVisibility(layerId);
-    
-    // Show notification
-    const action = isCurrentlyHidden ? 'shown' : 'hidden';
-    showNotification(`Category "${categoryValue}" ${action}`, 'info');
-}
 
 // Toggle all categories in a layer
 function toggleAllCategories(layerId) {
@@ -2901,14 +2878,14 @@ function toggleAllCategories(layerId) {
         // Show all categories
         layerInfo.hiddenCategories.clear();
         console.log('Showing all categories');
-        showNotification(`All categories shown for ${layerInfo.name}`, 'success');
+        // All categories shown
     } else {
         // Hide all categories
         allCategories.forEach(category => {
             layerInfo.hiddenCategories.add(category);
         });
         console.log('Hiding all categories');
-        showNotification(`All categories hidden for ${layerInfo.name}`, 'warning');
+        // All categories hidden
     }
 
     // Update the layer visibility
@@ -2922,7 +2899,8 @@ function toggleAllCategories(layerId) {
 function updateLayerCategoryVisibility(layerId) {
     const layerInfo = window.layers.get(layerId);
     if (!layerInfo || !layerInfo.layer || !layerInfo.classification) {
-        return;
+        console.warn(`Cannot update category visibility for layer ${layerId}: missing layer data or classification`);
+        return false;
     }
 
     const hiddenCategories = layerInfo.hiddenCategories || new Set();
@@ -2932,28 +2910,30 @@ function updateLayerCategoryVisibility(layerId) {
         const value = feature.properties[layerInfo.classification.field];
         const isHidden = hiddenCategories.has(value);
         
+        // Get the proper styling for this category
+        const baseStyle = {
+            color: layerInfo.classification.strokeColor || '#ffffff',
+            fillColor: layerInfo.classification.colorMap[value] || '#999999',
+            weight: layerInfo.classification.strokeWidth || 2,
+            opacity: layerInfo.classification.strokeOpacity || 1.0,
+            fillOpacity: layerInfo.classification.fillOpacity || 0.7
+        };
+        
         if (isHidden) {
-            // Make hidden categories transparent
+            // Make hidden categories completely invisible
             return {
-                color: layerInfo.classification.strokeColor || '#ffffff',
-                fillColor: layerInfo.classification.colorMap[value] || '#999999',
-                weight: layerInfo.classification.strokeWidth || 2,
+                ...baseStyle,
                 opacity: 0,
                 fillOpacity: 0
             };
         } else {
-            // Show visible categories normally
-            return {
-                color: layerInfo.classification.strokeColor || '#ffffff',
-                fillColor: layerInfo.classification.colorMap[value] || '#999999',
-                weight: layerInfo.classification.strokeWidth || 2,
-                opacity: 1.0,
-                fillOpacity: 0.7
-            };
+            // Show visible categories with proper styling
+            return baseStyle;
         }
     });
     
     console.log(`Updated category visibility for layer ${layerInfo.name}, hidden: ${hiddenCategories.size} categories`);
+    return true;
 }
 
 // Extract comprehensive classification data from various sources
@@ -2961,22 +2941,73 @@ function extractClassificationData(layerInfo) {
     // Check multiple possible sources for classification data
     let classificationData = null;
     
+    // Priority 1: Direct classification object (from symbology editor)
     if (layerInfo.classification && layerInfo.classification.colorMap) {
-        // Primary source: layerInfo.classification
+        console.log('✅ Found classification in layerInfo.classification');
         classificationData = {
             colorMap: layerInfo.classification.colorMap,
             field: layerInfo.classification.field,
-            strokeColor: layerInfo.classification.strokeColor,
-            strokeWidth: layerInfo.classification.strokeWidth
+            strokeColor: layerInfo.classification.strokeColor || '#ffffff',
+            strokeWidth: layerInfo.classification.strokeWidth || 2
         };
-    } else if (layerInfo.style && layerInfo.style.colorMap) {
-        // Secondary source: layerInfo.style
-        classificationData = {
-            colorMap: layerInfo.style.colorMap,
-            field: layerInfo.style.categoricalField,
-            strokeColor: layerInfo.style.color,
-            strokeWidth: layerInfo.style.weight
-        };
+    }
+    // Priority 2: Check style object for embedded classification
+    else if (layerInfo.style) {
+        // Check if style contains classification data
+        if (layerInfo.style.categoricalField && layerInfo.style.colorMap) {
+            console.log('✅ Found classification in style object');
+            classificationData = {
+                field: layerInfo.style.categoricalField,
+                colorMap: layerInfo.style.colorMap,
+                strokeColor: layerInfo.style.strokeColor || layerInfo.style.color || '#ffffff',
+                strokeWidth: layerInfo.style.strokeWidth || layerInfo.style.weight || 2
+            };
+        }
+        // Check if style is actually a function that contains classification logic
+        else if (typeof layerInfo.style === 'object' && layerInfo.style.classification) {
+            console.log('✅ Found nested classification in style');
+            classificationData = layerInfo.style.classification;
+        }
+    }
+    
+    // Priority 3: Extract from actual layer styling if it exists
+    if (!classificationData && layerInfo.layer && layerInfo.layer.options && layerInfo.layer.options.style) {
+        const styleFunc = layerInfo.layer.options.style;
+        if (typeof styleFunc === 'function' && layerInfo.data && layerInfo.data.features) {
+            console.log('✅ Attempting to extract from layer style function');
+            // Try to extract color mapping by testing the style function
+            const testFeatures = layerInfo.data.features.slice(0, 10); // Sample first 10 features
+            const colorMap = {};
+            let field = null;
+            
+            for (const feature of testFeatures) {
+                const style = styleFunc(feature);
+                if (style && style.fillColor) {
+                    // Try to find the field by checking all properties
+                    for (const [key, value] of Object.entries(feature.properties || {})) {
+                        if (value !== null && value !== undefined) {
+                            if (!field) field = key;
+                            if (key === field) {
+                                colorMap[value] = style.fillColor;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if (Object.keys(colorMap).length > 1) {
+                classificationData = {
+                    field: field,
+                    colorMap: colorMap,
+                    strokeColor: '#ffffff',
+                    strokeWidth: 2
+                };
+            }
+        }
+    }
+    
+    if (classificationData) {
+        console.log(`✅ Extracted classification data for field: ${classificationData.field}, categories: ${Object.keys(classificationData.colorMap).length}`);
     }
     
     return classificationData;
@@ -3036,13 +3067,7 @@ function enhancedUpdateLegend() {
             // Categorical layer - show categories with toggles
             console.log(`Creating categorical legend for: ${layerInfo.name}`);
             
-            // Add "Toggle All" button
-            const toggleAllBtn = document.createElement('button');
-            toggleAllBtn.className = 'text-xs px-2 py-1 bg-gray-600 hover:bg-gray-500 text-gray-200 rounded transition-colors';
-            toggleAllBtn.textContent = 'Toggle All';
-            toggleAllBtn.title = 'Show/hide all categories';
-            toggleAllBtn.addEventListener('click', () => toggleAllCategories(layerInfo.layerId));
-            layerHeader.appendChild(toggleAllBtn);
+            // No global toggle button - individual eye icons only
             
             legendContainer.appendChild(layerHeader);
             
@@ -3076,20 +3101,28 @@ function enhancedUpdateLegend() {
                 categoryLabel.className = 'text-xs text-gray-300 flex-1';
                 categoryLabel.textContent = value;
                 
-                // Status indicator
-                const statusIndicator = document.createElement('div');
-                statusIndicator.className = `toggle-status w-3 h-3 rounded-full ${isHidden ? 'bg-red-500' : 'bg-green-500'}`;
-                statusIndicator.title = isHidden ? 'Category is hidden' : 'Category is visible';
+                // Eye icon indicator
+                const eyeIndicator = document.createElement('i');
+                eyeIndicator.className = `toggle-eye fas ${isHidden ? 'fa-eye-slash text-red-400' : 'fa-eye text-green-400'} text-sm cursor-pointer hover:scale-110 transition-all`;
+                eyeIndicator.title = isHidden ? 'Click to show category' : 'Click to hide category';
                 
-                // Add click handler for toggle
-                categoryItem.addEventListener('click', (e) => {
+                // Add click handler specifically to the eye icon for better UX
+                eyeIndicator.addEventListener('click', (e) => {
                     e.preventDefault();
+                    e.stopPropagation();
+                    toggleCategoryVisibility(layerInfo.layerId, value, categoryItem);
+                });
+                
+                // Also allow clicking the color swatch for convenience
+                colorSwatch.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     toggleCategoryVisibility(layerInfo.layerId, value, categoryItem);
                 });
                 
                 categoryItem.appendChild(colorSwatch);
                 categoryItem.appendChild(categoryLabel);
-                categoryItem.appendChild(statusIndicator);
+                categoryItem.appendChild(eyeIndicator);
                 categoriesContainer.appendChild(categoryItem);
             });
             
@@ -3106,8 +3139,32 @@ function enhancedUpdateLegend() {
             
             const colorSwatch = document.createElement('div');
             colorSwatch.className = 'legend-color w-5 h-5 rounded border-2';
-            colorSwatch.style.backgroundColor = layerInfo.style?.fillColor || '#888888';
-            colorSwatch.style.borderColor = layerInfo.style?.color || '#ffffff';
+            
+            // Extract actual colors from layer styling
+            let fillColor = '#888888';
+            let strokeColor = '#ffffff';
+            
+            // Try multiple sources for style information
+            if (layerInfo.style) {
+                fillColor = layerInfo.style.fillColor || fillColor;
+                strokeColor = layerInfo.style.color || strokeColor;
+            }
+            
+            // Check if it's a permanent layer with special styling
+            if (layerInfo.layer && layerInfo.layer.options && layerInfo.layer.options.style) {
+                const styleFunc = layerInfo.layer.options.style;
+                if (typeof styleFunc === 'function' && layerInfo.data && layerInfo.data.features && layerInfo.data.features.length > 0) {
+                    // Extract style from the first feature
+                    const sampleStyle = styleFunc(layerInfo.data.features[0]);
+                    if (sampleStyle) {
+                        fillColor = sampleStyle.fillColor || fillColor;
+                        strokeColor = sampleStyle.color || strokeColor;
+                    }
+                }
+            }
+            
+            colorSwatch.style.backgroundColor = fillColor;
+            colorSwatch.style.borderColor = strokeColor;
             colorSwatch.style.borderWidth = '2px';
             
             const label = document.createElement('span');
@@ -3123,12 +3180,12 @@ function enhancedUpdateLegend() {
     });
     
     console.log(`✅ Enhanced legend updated with ${visibleLayers.length} layers`);
+    
+    // Event listeners are now attached directly to individual elements during creation
+    // This ensures better performance and more intuitive user interaction
 }
 
 // Make functions globally available
-window.showLayerContextMenu = showLayerContextMenu;
-window.hideLayerContextMenu = hideLayerContextMenu;
-window.setupLayerContextMenuListeners = setupLayerContextMenuListeners;
 window.zoomToLayer = zoomToLayer;
 window.renameLayer = renameLayer;
 window.deleteLayer = deleteLayer;

@@ -206,13 +206,23 @@ function switchBasemap(basemapKey) {
     currentBasemap = basemaps[basemapKey];
     map.addLayer(currentBasemap);
     
+    // Track basemap loading for loading overlay
+    if (typeof window.trackLayerLoading === 'function') {
+        window.trackLayerLoading(currentBasemap, `basemap-${basemapKey}`);
+    }
+    
     // Send basemap to back so it doesn't cover other layers
     currentBasemap.bringToBack();
     
-    // Force map to re-render tiles
+    // Force map to re-render tiles and restore layer order
     setTimeout(() => {
         map.invalidateSize();
         map.getContainer().focus(); // Ensure map has focus for proper rendering
+        
+        // Restore layer order after basemap change to prevent interference
+        if (window.updateMapLayerOrder) {
+            window.updateMapLayerOrder();
+        }
     }, 100);
     
     console.log(`Successfully switched basemap to: ${basemapKey}`);
@@ -273,6 +283,11 @@ function previewBasemapOnHover(basemapKey, labelKey = null) {
         map.addLayer(previewBasemap);
         previewBasemap.bringToBack();
         
+        // Restore layer order after preview basemap change
+        if (window.updateMapLayerOrder) {
+            setTimeout(() => window.updateMapLayerOrder(), 50);
+        }
+        
         // Add preview labels if specified
         if (labelKey && basemaps[labelKey]) {
             previewLabels = basemaps[labelKey];
@@ -315,6 +330,11 @@ function revertToOriginalBasemap() {
         originalBasemap.bringToBack();
         currentBasemap = originalBasemap;
         originalBasemap = null;
+        
+        // Restore layer order after restoring original basemap
+        if (window.updateMapLayerOrder) {
+            setTimeout(() => window.updateMapLayerOrder(), 50);
+        }
     }
     
     // Restore original labels
@@ -604,9 +624,15 @@ function initBasemaps(mapInstance) {
     console.log(`Loaded ${Object.keys(basemaps).length} basemap providers`);
     
     // Set initial basemap to Google Satellite (no labels) as default
-    currentBasemap = basemaps['carto-dark-matter'];
+    currentBasemap = basemaps['esri-world-imagery'];
     currentBasemap.addTo(mapInstance);
-    console.log('🛰️ Set default basemap to Google Satellite');
+    
+    // Track basemap loading for loading overlay
+    if (typeof window.trackLayerLoading === 'function') {
+        window.trackLayerLoading(currentBasemap, 'basemap-default');
+    }
+    
+    console.log('🛰️ Set default basemap to Esri World Imagery');
     
     // Setup map context menu for basemap switching
     setupMapContextMenu();

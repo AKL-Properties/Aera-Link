@@ -49,20 +49,12 @@ function toggleCollaborativeMode(isCollaborative) {
     // Update UI labels
     updateModeLabels(isCollaborative);
     
-    // Show notification about mode change
-    const modeText = isCollaborative ? 'Collaborative Mode' : 'Personal Mode';
-    const description = isCollaborative 
-        ? 'Styles are now shared with all users' 
-        : 'Styles are now saved to your personal account';
-    
-    showNotification(`Switched to ${modeText} - ${description}`, 'info', 4000);
-    
     // If mode actually changed, reload symbology for all layers
     if (previousMode !== isCollaborative) {
         reloadAllLayerSymbology();
     }
     
-    console.log(`🔄 Mode switched to: ${modeText}`);
+    console.log(`🔄 Mode switched to: ${isCollaborative ? 'Collaborative' : 'Personal'} Mode`);
 }
 
 // Update mode labels styling

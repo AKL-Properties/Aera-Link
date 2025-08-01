@@ -207,6 +207,14 @@ function setupLoginListeners() {
             hideLoginPage();
             initializeWebGIS();
             
+            // Refresh permanent layer symbology after authentication
+            setTimeout(async () => {
+                if (typeof window.refreshPermanentLayerSymbology === 'function') {
+                    console.log('🔄 Refreshing permanent layer symbology after login...');
+                    await window.refreshPermanentLayerSymbology();
+                }
+            }, 2000); // Wait a bit for layers to load first
+            
             // Setup global escape handler after login
             if (typeof setupGlobalEscapeHandler === 'function') {
                 setupGlobalEscapeHandler();

@@ -87,6 +87,57 @@ let currentFilterState = {
     activeFilter: null
 };
 
+// Helper function to preserve and reconstruct styling functions
+function preserveLayerStyling(layerInfo) {
+    console.log('🔄 Preserving layer styling for filter operations...');
+    
+    // If we already have the original styling function preserved, use it
+    if (layerInfo.originalStyleFunction) {
+        console.log('✅ Original styling function already preserved');
+        return layerInfo.originalStyleFunction;
+    }
+    
+    // Check if the current layer has a styling function (for categorical symbology)
+    if (layerInfo.layer && layerInfo.layer.options && typeof layerInfo.layer.options.style === 'function') {
+        console.log('✅ Preserving active categorical styling function');
+        layerInfo.originalStyleFunction = layerInfo.layer.options.style;
+        return layerInfo.originalStyleFunction;
+    }
+    
+    // Check if we can reconstruct from stored style data
+    if (layerInfo.style && (layerInfo.style.categoricalField || layerInfo.style.classification_field)) {
+        console.log('🔄 Reconstructing categorical styling function from style data');
+        const fieldName = layerInfo.style.categoricalField || layerInfo.style.classification_field;
+        const colorMap = layerInfo.style.colorMap;
+        
+        if (fieldName && colorMap) {
+            const styleFunction = function(feature) {
+                const fieldValue = feature.properties[fieldName];
+                const color = colorMap[fieldValue] || layerInfo.style.fillColor || layerInfo.style.fill_color || '#14b8a6';
+                return {
+                    color: layerInfo.style.strokeColor || layerInfo.style.stroke_color || layerInfo.style.color || '#ffffff',
+                    weight: layerInfo.style.strokeWidth || layerInfo.style.stroke_weight || layerInfo.style.weight || 2,
+                    opacity: layerInfo.style.strokeOpacity || layerInfo.style.stroke_opacity || layerInfo.style.opacity || 1.0,
+                    fillColor: color,
+                    fillOpacity: layerInfo.style.fillOpacity || layerInfo.style.fill_opacity || 1.0
+                };
+            };
+            layerInfo.originalStyleFunction = styleFunction;
+            return styleFunction;
+        }
+    }
+    
+    // Return single symbol style object as fallback
+    console.log('📝 Using single symbol style object as fallback');
+    return {
+        color: layerInfo.style?.strokeColor || layerInfo.style?.stroke_color || layerInfo.style?.color || '#ffffff',
+        weight: layerInfo.style?.strokeWidth || layerInfo.style?.stroke_weight || layerInfo.style?.weight || 2,
+        opacity: layerInfo.style?.strokeOpacity || layerInfo.style?.stroke_opacity || layerInfo.style?.opacity || 1.0,
+        fillColor: layerInfo.style?.fillColor || layerInfo.style?.fill_color || '#14b8a6',
+        fillOpacity: layerInfo.style?.fillOpacity || layerInfo.style?.fill_opacity || 1.0
+    };
+}
+
 // Setup filter panel listeners
 function setupNewFilterListeners() {
     console.log('Setting up filter listeners...');
@@ -287,12 +338,12 @@ function populateFilterLayers() {
             sourceType: layerInfo.sourceType,
             hasData: !!(layerInfo.data),
             hasOriginalData: !!(layerInfo.originalData),
-            hasFeatures: !!(layerInfo.data && layerInfo.data.features),
-            featureCount: layerInfo.data && layerInfo.data.features ? layerInfo.data.features.length : 0
+            hasFeatures: !!(layerInfo.data && layerInfo.data.features && layerInfo.sourceType !== 'wms'),
+            featureCount: (layerInfo.data && layerInfo.data.features && layerInfo.sourceType !== 'wms') ? layerInfo.data.features.length : 0
         });
         
-        // Include all visible layers with valid data, regardless of source
-        if (layerInfo.visible && layerInfo.data) {
+        // Include all visible layers with valid feature data (exclude WMS and other tile-based layers)
+        if (layerInfo.visible && layerInfo.data && layerInfo.sourceType !== 'wms') {
             // Enhanced feature detection for all layer types
             let features = [];
             
@@ -615,29 +666,12 @@ function applyNewFilter() {
     // Remove existing layer and add filtered layer
     map.removeLayer(layerInfo.layer);
     
-    // Ensure we have a valid style - preserve the original layer's styling approach
-    let styleToUse = layerStyle || layerInfo.style;
-    
-    // If still no style, try to extract from the original layer itself
-    if (!styleToUse && layerInfo.layer && layerInfo.layer.options) {
-        styleToUse = layerInfo.layer.options.style;
-    }
-    
-    // Final fallback to prevent any default blue styling
-    if (!styleToUse) {
-        console.warn('No style found for filtered layer, using Aera default style');
-        styleToUse = {
-            color: '#ffffff',
-            weight: 2,
-            opacity: 1.0,
-            fillColor: '#14b8a6',
-            fillOpacity: 1.0
-        };
-    }
+    // CRITICAL FIX: Use helper function to preserve styling
+    const styleToUse = preserveLayerStyling(layerInfo);
     
     const filteredLayer = L.geoJSON(filteredData, {
         renderer: L.canvas(), // Force canvas rendering for leaflet-image export compatibility
-        style: styleToUse, // Use the preserved original style with proper fallbacks
+        style: styleToUse, // Use the preserved original styling function or style object
         onEachFeature: (feature, layer) => {
             if (feature.properties) {
                 let popupContent = '<div class="modern-popup-container">';
@@ -645,9 +679,25 @@ function applyNewFilter() {
                 popupContent += '<div class="modern-popup-body">';
                 
                 for (let key in feature.properties) {
+                    const value = feature.properties[key] || 'N/A';
+                    
+                    // Check if the field name suggests a link or if the value looks like a URL
+                    const isLinkField = key.toLowerCase().includes('link') || 
+                                       key.toLowerCase().includes('url') || 
+                                       key.toLowerCase().includes('document');
+                    const isUrlValue = typeof value === 'string' && 
+                                      (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('www.'));
+                    
+                    let displayValue = value;
+                    if ((isLinkField || isUrlValue) && value !== 'N/A') {
+                        // Make the value clickable
+                        const href = value.startsWith('www.') ? `https://${value}` : value;
+                        displayValue = `<a href="${href}" target="_blank" rel="noopener noreferrer" class="popup-link">${value}</a>`;
+                    }
+                    
                     popupContent += `<div class="property-row">`;
                     popupContent += `<div class="property-key">${key}</div>`;
-                    popupContent += `<div class="property-value">${feature.properties[key] || 'N/A'}</div>`;
+                    popupContent += `<div class="property-value">${displayValue}</div>`;
                     popupContent += `</div>`;
                 }
                 
@@ -661,7 +711,8 @@ function applyNewFilter() {
         }
     }).addTo(map);
     
-    // Update layer info
+    // Styling function is already preserved by preserveLayerStyling helper
+    
     layerInfo.layer = filteredLayer;
     layerInfo.data = filteredData;
     
@@ -788,10 +839,14 @@ function clearNewFilter() {
     // Remove current layer
     map.removeLayer(layerInfo.layer);
     
-    // Restore original data
+    // Restore original data with preserved styling
+    // CRITICAL FIX: Use helper function to restore styling
+    const styleToUse = preserveLayerStyling(layerInfo);
+    console.log('✅ Using preserved styling for filter restoration');
+    
     const originalLayer = L.geoJSON(layerInfo.originalData, {
         renderer: L.canvas(), // Force canvas rendering for leaflet-image export compatibility
-        style: layerInfo.style,
+        style: styleToUse,
         onEachFeature: (feature, layer) => {
             if (feature.properties) {
                 let popupContent = '<div class="modern-popup-container">';
@@ -799,9 +854,25 @@ function clearNewFilter() {
                 popupContent += '<div class="modern-popup-body">';
                 
                 for (let key in feature.properties) {
+                    const value = feature.properties[key] || 'N/A';
+                    
+                    // Check if the field name suggests a link or if the value looks like a URL
+                    const isLinkField = key.toLowerCase().includes('link') || 
+                                       key.toLowerCase().includes('url') || 
+                                       key.toLowerCase().includes('document');
+                    const isUrlValue = typeof value === 'string' && 
+                                      (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('www.'));
+                    
+                    let displayValue = value;
+                    if ((isLinkField || isUrlValue) && value !== 'N/A') {
+                        // Make the value clickable
+                        const href = value.startsWith('www.') ? `https://${value}` : value;
+                        displayValue = `<a href="${href}" target="_blank" rel="noopener noreferrer" class="popup-link">${value}</a>`;
+                    }
+                    
                     popupContent += `<div class="property-row">`;
                     popupContent += `<div class="property-key">${key}</div>`;
-                    popupContent += `<div class="property-value">${feature.properties[key] || 'N/A'}</div>`;
+                    popupContent += `<div class="property-value">${displayValue}</div>`;
                     popupContent += `</div>`;
                 }
                 
@@ -890,7 +961,7 @@ async function createLayerFromSelection() {
         weight: 2,
         opacity: 1,
         color: '#ffffff', // White outline
-        fillOpacity: 0.7,
+        fillOpacity: 1.0,
         dashArray: null // Solid line
     };
     
@@ -909,9 +980,25 @@ async function createLayerFromSelection() {
                     
                     for (let key in feature.properties) {
                         if (feature.properties.hasOwnProperty(key)) {
+                            const value = feature.properties[key] || 'N/A';
+                            
+                            // Check if the field name suggests a link or if the value looks like a URL
+                            const isLinkField = key.toLowerCase().includes('link') || 
+                                               key.toLowerCase().includes('url') || 
+                                               key.toLowerCase().includes('document');
+                            const isUrlValue = typeof value === 'string' && 
+                                              (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('www.'));
+                            
+                            let displayValue = value;
+                            if ((isLinkField || isUrlValue) && value !== 'N/A') {
+                                // Make the value clickable
+                                const href = value.startsWith('www.') ? `https://${value}` : value;
+                                displayValue = `<a href="${href}" target="_blank" rel="noopener noreferrer" class="popup-link">${value}</a>`;
+                            }
+                            
                             popupContent += `<div class="property-row">`;
                             popupContent += `<div class="property-key">${key}</div>`;
-                            popupContent += `<div class="property-value">${feature.properties[key] || 'N/A'}</div>`;
+                            popupContent += `<div class="property-value">${displayValue}</div>`;
                             popupContent += `</div>`;
                         }
                     }
@@ -986,7 +1073,7 @@ async function createLayerFromSelection() {
         }
         
         // Show success message
-        await showSuccess(`Created new layer with ${selectedGeoJSON.features.length} features`, 'Layer Created');
+        // Created new layer with filtered features
         
         // Clear the selection after successful layer creation
         if (typeof window.clearSelection === 'function') {
@@ -1005,7 +1092,53 @@ async function createLayerFromSelection() {
                     // Update layer name
                     const layerInfo = layers.get(layerId);
                     if (layerInfo) {
-                        layerInfo.name = newName.trim();
+                        const oldName = layerInfo.name;
+                        const trimmedName = newName.trim();
+                        
+                        // Update layer name in memory
+                        layerInfo.name = trimmedName;
+                        
+                        // Update database if it's a dynamic layer that should be saved
+                        const shouldUpdateDatabase = layerInfo.isUserGenerated || layerInfo.isFilteredSelection;
+                        if (shouldUpdateDatabase && window.supabase && window.currentUser) {
+                            (async () => {
+                                try {
+                                    // First, try to update by database ID if available
+                                    if (layerInfo.databaseId) {
+                                        const { error } = await supabase
+                                            .from('layers')
+                                            .update({ name: trimmedName })
+                                            .eq('id', layerInfo.databaseId)
+                                            .eq('user_id', currentUser.id);
+                                        
+                                        if (error) {
+                                            console.error('Error updating layer name in database by ID:', error);
+                                            showNotification('Layer renamed locally but failed to update database', 'warning');
+                                        } else {
+                                            console.log('Layer name updated in database by ID');
+                                        }
+                                    } else {
+                                        // If no database ID, try to find and update by old name
+                                        const { error } = await supabase
+                                            .from('layers')
+                                            .update({ name: trimmedName })
+                                            .eq('name', oldName)
+                                            .eq('user_id', currentUser.id);
+                                        
+                                        if (error) {
+                                            console.error('Error updating layer name in database by name:', error);
+                                            showNotification('Layer renamed locally but failed to update database', 'warning');
+                                        } else {
+                                            console.log('Layer name updated in database by name');
+                                        }
+                                    }
+                                } catch (dbError) {
+                                    console.error('Database error during layer rename:', dbError);
+                                    showNotification('Layer renamed locally but database update failed', 'warning');
+                                }
+                            })();
+                        }
+                        
                         // Update UI
                         updateLayersList();
                         updateLegend();
@@ -1148,9 +1281,12 @@ function applyFilter() {
     // Remove existing layer and add filtered layer
     map.removeLayer(layerInfo.layer);
     
+    // CRITICAL FIX: Use helper function to preserve styling (legacy)
+    const styleToUse = preserveLayerStyling(layerInfo);
+    
     const filteredLayer = L.geoJSON(filteredData, {
         renderer: L.canvas(), // Force canvas rendering for leaflet-image export compatibility
-        style: layerInfo.style,
+        style: styleToUse,
         onEachFeature: (feature, layer) => {
             if (feature.properties) {
                 let popupContent = '<div class="text-sm">';
@@ -1167,7 +1303,8 @@ function applyFilter() {
         }
     }).addTo(map);
 
-    // Update layer info
+    // Styling function is already preserved by preserveLayerStyling helper (legacy)
+    
     layerInfo.layer = filteredLayer;
     layerInfo.data = filteredData;
 
@@ -1192,10 +1329,14 @@ function clearFilter() {
     // Remove current layer
     map.removeLayer(layerInfo.layer);
     
-    // Restore original data
+    // Restore original data with preserved styling (legacy)
+    // CRITICAL FIX: Use helper function to restore styling
+    const styleToUse = preserveLayerStyling(layerInfo);
+    console.log('✅ Using preserved styling for filter restoration (legacy)');
+    
     const originalLayer = L.geoJSON(layerInfo.originalData, {
         renderer: L.canvas(), // Force canvas rendering for leaflet-image export compatibility
-        style: layerInfo.style,
+        style: styleToUse,
         onEachFeature: (feature, layer) => {
             if (feature.properties) {
                 let popupContent = '<div class="text-sm">';
@@ -1226,6 +1367,9 @@ function clearFilter() {
     // Close modal
     document.getElementById('filterModal').classList.add('hidden');
 }
+
+// Export the helper function for debugging and other modules
+window.preserveLayerStyling = preserveLayerStyling;
 
 // Export functions to global scope for compatibility
 window.setupNewFilterListeners = setupNewFilterListeners;

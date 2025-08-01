@@ -173,6 +173,9 @@ function initializeSelectionTools(map) {
         }
     }
 
+    // Debounce mousemove updates for better performance
+    let mouseMoveDebounce = null;
+    
     function handleMouseMove(e) {
         if (!isSelectionActive || !isDrawing || window.isMiddleMouseDown) return;
         
@@ -181,16 +184,23 @@ function initializeSelectionTools(map) {
             // Add current mouse position to the path for smooth freehand drawing
             drawingPath.push(e.latlng);
             
-            // Update the drawing layer with the full freehand path
-            if (currentDrawingLayer) {
-                currentDrawingLayer.setLatLngs(drawingPath);
+            // Debounce drawing updates to improve performance during rapid movement
+            if (mouseMoveDebounce) {
+                clearTimeout(mouseMoveDebounce);
             }
             
-            // Update fill layer - create closed shape from the complete drawn path
-            if (currentFillLayer && drawingPath.length > 2) {
-                const fillPath = [...drawingPath, drawingPath[0]]; // Close the shape
-                currentFillLayer.setLatLngs([fillPath]);
-            }
+            mouseMoveDebounce = setTimeout(() => {
+                // Update the drawing layer with the full freehand path
+                if (currentDrawingLayer) {
+                    currentDrawingLayer.setLatLngs(drawingPath);
+                }
+                
+                // Update fill layer - create closed shape from the complete drawn path
+                if (currentFillLayer && drawingPath.length > 2) {
+                    const fillPath = [...drawingPath, drawingPath[0]]; // Close the shape
+                    currentFillLayer.setLatLngs([fillPath]);
+                }
+            }, 16); // ~60fps update rate
         }
     }
 
@@ -528,7 +538,7 @@ function enablePopupOnLayer(layer) {
     }
 }
 
-// Find intersecting features with polygon selection
+// Find intersecting features with polygon selection (optimized for performance)
 function findIntersectingFeaturesWithPolygon(polygonPath, modifierKeys = {}) {
     if (!activeSelectionLayerId || !window.layers || !window.layers.has(activeSelectionLayerId)) {
         console.warn('No active layer selected for feature selection or layers not available');
@@ -541,172 +551,250 @@ function findIntersectingFeaturesWithPolygon(polygonPath, modifierKeys = {}) {
         return;
     }
 
-    // Convert polygon path to turf.js polygon
+    // Convert polygon path to turf.js polygon once
     const turfPolygon = turf.polygon([polygonPath.map(latlng => [latlng.lng, latlng.lat])]);
+    
+    // Get polygon bounds for spatial pre-filtering
+    const polygonBounds = turf.bbox(turfPolygon);
+    const [minLng, minLat, maxLng, maxLat] = polygonBounds;
 
     let intersectingFeatures = [];
+    let processedCount = 0;
+    let skippedCount = 0;
 
-    // Helper for robust intersection
-    function robustIntersects(featureGeoJSON, selPolygon) {
+    // Optimized intersection helper with caching and early exits
+    function optimizedIntersects(featureGeoJSON, selPolygon, geometryType) {
         try {
-            // Use turf.booleanIntersects for all polygonal types
-            return turf.booleanIntersects(featureGeoJSON, selPolygon);
+            // Early spatial bounds check for performance
+            if (featureGeoJSON.geometry.coordinates) {
+                const coords = featureGeoJSON.geometry.coordinates;
+                let featureBounds;
+                
+                // Quick bounds check based on geometry type
+                if (geometryType === 'Point') {
+                    const [lng, lat] = coords;
+                    if (lng < minLng || lng > maxLng || lat < minLat || lat > maxLat) {
+                        return false; // Outside selection bounds
+                    }
+                } else {
+                    // For complex geometries, use turf.bbox but cache if possible
+                    try {
+                        featureBounds = turf.bbox(featureGeoJSON);
+                        const [fMinLng, fMinLat, fMaxLng, fMaxLat] = featureBounds;
+                        
+                        // Quick bounds overlap check
+                        if (fMaxLng < minLng || fMinLng > maxLng || fMaxLat < minLat || fMinLat > maxLat) {
+                            return false; // No bounds overlap
+                        }
+                    } catch (bboxError) {
+                        // Continue with full intersection test if bbox fails
+                    }
+                }
+            }
+
+            // Perform actual intersection test
+            switch (geometryType) {
+                case 'Point':
+                    return turf.booleanPointInPolygon(featureGeoJSON, selPolygon);
+                case 'LineString':
+                case 'MultiLineString':
+                    return turf.booleanIntersects(featureGeoJSON, selPolygon);
+                case 'Polygon':
+                case 'MultiPolygon':
+                    return turf.booleanIntersects(featureGeoJSON, selPolygon) ||
+                           turf.booleanWithin(featureGeoJSON, selPolygon) ||
+                           turf.booleanWithin(selPolygon, featureGeoJSON);
+                default:
+                    return turf.booleanIntersects(featureGeoJSON, selPolygon);
+            }
         } catch (e) {
             console.warn('Intersection test failed for feature:', e);
             return false;
         }
     }
 
-    // Handle different layer types
+    // Batch process features for better performance
+    const featuresToProcess = [];
+    
+    // Collect all features first
     if (targetLayer.layer.eachLayer) {
         // FeatureGroup or LayerGroup
         targetLayer.layer.eachLayer(function(layer) {
             if (layer.feature && layer.feature.geometry) {
-                try {
-                    const layerGeoJSON = layer.feature;
-                    let intersects = false;
-                    switch (layerGeoJSON.geometry.type) {
-                        case 'Point':
-                            intersects = turf.booleanPointInPolygon(layerGeoJSON, turfPolygon);
-                            break;
-                        case 'LineString':
-                        case 'MultiLineString':
-                        case 'Polygon':
-                        case 'MultiPolygon':
-                            intersects = robustIntersects(layerGeoJSON, turfPolygon);
-                            break;
-                        default:
-                            intersects = robustIntersects(layerGeoJSON, turfPolygon);
-                    }
-                    if (intersects) {
-                        intersectingFeatures.push(layerGeoJSON);
-                    }
-                } catch (error) {
-                    console.warn('Error checking intersection for feature:', error);
-                }
+                featuresToProcess.push(layer.feature);
             }
         });
     } else if (targetLayer.layer.feature) {
         // Single feature layer
-        const layerGeoJSON = targetLayer.layer.feature;
-        try {
-            let intersects = false;
-            
-            switch (layerGeoJSON.geometry.type) {
-                case 'Point':
-                    intersects = turf.booleanPointInPolygon(layerGeoJSON, turfPolygon);
-                    break;
-                case 'LineString':
-                case 'MultiLineString':
-                case 'Polygon':
-                case 'MultiPolygon':
-                    intersects = turf.booleanOverlap(layerGeoJSON, turfPolygon) || 
-                                turf.booleanWithin(layerGeoJSON, turfPolygon) ||
-                                turf.booleanWithin(turfPolygon, layerGeoJSON);
-                    break;
-                default:
-                    try {
-                        intersects = turf.booleanOverlap(layerGeoJSON, turfPolygon) || 
-                                    turf.booleanWithin(layerGeoJSON, turfPolygon);
-                    } catch (e) {
-                        intersects = false;
-                    }
-            }
-            
-            if (intersects) {
-                intersectingFeatures.push(layerGeoJSON);
-            }
-        } catch (error) {
-            console.warn('Error checking intersection for single feature:', error);
-        }
+        featuresToProcess.push(targetLayer.layer.feature);
     }
 
-    console.log(`Found ${intersectingFeatures.length} intersecting features`);
-
-    // Apply selection based on modifier keys
-    if (modifierKeys.ctrlKey || modifierKeys.metaKey) {
-        // Ctrl/Cmd key: Remove from selection
-        intersectingFeatures.forEach(feature => {
-            // Remove from both local array and global memory
-            const index = selectedFeatures.findIndex(f => 
-                f.properties && feature.properties && 
-                JSON.stringify(f.properties) === JSON.stringify(feature.properties)
-            );
-            if (index > -1) {
-                selectedFeatures.splice(index, 1);
+    // Process features in batches to prevent UI blocking
+    function processBatch(startIndex, batchSize = 100) {
+        const endIndex = Math.min(startIndex + batchSize, featuresToProcess.length);
+        
+        for (let i = startIndex; i < endIndex; i++) {
+            const layerGeoJSON = featuresToProcess[i];
+            const geometryType = layerGeoJSON.geometry.type;
+            
+            try {
+                const intersects = optimizedIntersects(layerGeoJSON, turfPolygon, geometryType);
+                if (intersects) {
+                    intersectingFeatures.push(layerGeoJSON);
+                    processedCount++;
+                } else {
+                    skippedCount++;
+                }
+            } catch (error) {
+                console.warn('Error checking intersection for feature:', error);
+                skippedCount++;
             }
-            // Remove from global memory if it exists
-            if (feature.id) {
-                window.selectedFeaturesMemory.removeFeature(feature.id);
-            }
-        });
-    } else if (modifierKeys.shiftKey) {
-        // Shift key: Add to selection (avoid duplicates)
-        intersectingFeatures.forEach(feature => {
-            const exists = selectedFeatures.some(f => 
-                f.properties && feature.properties && 
-                JSON.stringify(f.properties) === JSON.stringify(feature.properties)
-            );
-            if (!exists) {
-                selectedFeatures.push(feature);
-                // Add to global memory
-                window.selectedFeaturesMemory.addFeature(feature);
-            }
-        });
-    } else {
-        // No modifier: Replace selection
-        selectedFeatures = [...intersectingFeatures];
-        // Clear and repopulate global memory
-        window.selectedFeaturesMemory.clear();
-        intersectingFeatures.forEach(feature => {
-            window.selectedFeaturesMemory.addFeature(feature);
-        });
-        // Update source layer in metadata
-        window.selectedFeaturesMemory.metadata.sourceLayer = activeSelectionLayerId;
+        }
+        
+        // If more features to process, schedule next batch
+        if (endIndex < featuresToProcess.length) {
+            // Use requestAnimationFrame for non-blocking processing
+            requestAnimationFrame(() => processBatch(endIndex, batchSize));
+            return;
+        }
+        
+        // All features processed, continue with selection logic
+        finishSelection();
     }
 
-    // Update visual highlights and UI
-    updateHighlights();
-    updateSelectionInfo();
-}
+    function finishSelection() {
+        console.log(`Spatial selection completed: ${intersectingFeatures.length} intersecting features found (processed: ${processedCount}, skipped: ${skippedCount})`);
 
-// Update visual highlights for selected features
-function updateHighlights() {
-    // Clear existing highlights
-    highlightedLayers.forEach(layer => {
-        if (window.map.hasLayer(layer)) {
-            window.map.removeLayer(layer);
-        }
-    });
-    highlightedLayers = [];
-
-    // Add highlights for selected features
-    selectedFeatures.forEach(feature => {
-        if (feature.geometry) {
-            const highlightLayer = L.geoJSON(feature, {
-                style: {
-                    color: '#ffff00',
-                    weight: 4,
-                    opacity: 1,
-                    fillColor: '#ffff00',
-                    fillOpacity: 0.3
-                },
-                pointToLayer: function(feature, latlng) {
-                    return L.circleMarker(latlng, {
-                        radius: 8,
-                        color: '#ffff00',
-                        weight: 4,
-                        opacity: 1,
-                        fillColor: '#ffff00',
-                        fillOpacity: 0.3
-                    });
+        // Apply selection based on modifier keys
+        if (modifierKeys.ctrlKey || modifierKeys.metaKey) {
+            // Ctrl/Cmd key: Remove from selection
+            intersectingFeatures.forEach(feature => {
+                // More efficient duplicate finding using feature ID or properties hash
+                const featureHash = feature.id || JSON.stringify(feature.properties);
+                const index = selectedFeatures.findIndex(f => {
+                    const selectedHash = f.id || JSON.stringify(f.properties);
+                    return selectedHash === featureHash;
+                });
+                if (index > -1) {
+                    selectedFeatures.splice(index, 1);
+                }
+                // Remove from global memory if it exists
+                if (feature.id) {
+                    window.selectedFeaturesMemory.removeFeature(feature.id);
                 }
             });
-            
-            highlightedLayers.push(highlightLayer);
-            highlightLayer.addTo(window.map);
+        } else if (modifierKeys.shiftKey) {
+            // Shift key: Add to selection (avoid duplicates)
+            intersectingFeatures.forEach(feature => {
+                const featureHash = feature.id || JSON.stringify(feature.properties);
+                const exists = selectedFeatures.some(f => {
+                    const selectedHash = f.id || JSON.stringify(f.properties);
+                    return selectedHash === featureHash;
+                });
+                if (!exists) {
+                    selectedFeatures.push(feature);
+                    // Add to global memory
+                    window.selectedFeaturesMemory.addFeature(feature);
+                }
+            });
+        } else {
+            // No modifier: Replace selection
+            selectedFeatures = [...intersectingFeatures];
+            // Clear and repopulate global memory
+            window.selectedFeaturesMemory.clear();
+            intersectingFeatures.forEach(feature => {
+                window.selectedFeaturesMemory.addFeature(feature);
+            });
+            // Update source layer in metadata
+            window.selectedFeaturesMemory.metadata.sourceLayer = activeSelectionLayerId;
         }
-    });
+
+        // Batch update visual highlights and UI
+        requestAnimationFrame(() => {
+            updateHighlights();
+            updateSelectionInfo();
+        });
+    }
+
+    // Start batch processing
+    if (featuresToProcess.length > 0) {
+        processBatch(0);
+    } else {
+        finishSelection();
+    }
+}
+
+// Update visual highlights for selected features (optimized with batching)
+function updateHighlights() {
+    // Clear existing highlights efficiently
+    if (highlightedLayers.length > 0) {
+        // Batch remove all highlight layers
+        highlightedLayers.forEach(layer => {
+            if (window.map.hasLayer(layer)) {
+                window.map.removeLayer(layer);
+            }
+        });
+        highlightedLayers = [];
+    }
+
+    // Early exit if no features to highlight
+    if (selectedFeatures.length === 0) {
+        return;
+    }
+
+    // Create highlights in batches for better performance
+    const batchSize = 50; // Process 50 features at a time
+    
+    function createHighlightBatch(startIndex) {
+        const endIndex = Math.min(startIndex + batchSize, selectedFeatures.length);
+        const batchLayers = [];
+        
+        for (let i = startIndex; i < endIndex; i++) {
+            const feature = selectedFeatures[i];
+            if (feature && feature.geometry) {
+                try {
+                    const highlightLayer = L.geoJSON(feature, {
+                        renderer: L.canvas(), // Force canvas rendering for export compatibility
+                        style: {
+                            color: '#ffff00',
+                            weight: 4,
+                            opacity: 1,
+                            fillColor: '#ffff00',
+                            fillOpacity: 0.3
+                        },
+                        pointToLayer: function(feature, latlng) {
+                            return L.circleMarker(latlng, {
+                                radius: 8,
+                                color: '#ffff00',
+                                weight: 4,
+                                opacity: 1,
+                                fillColor: '#ffff00',
+                                fillOpacity: 0.3
+                            });
+                        }
+                    });
+                    
+                    batchLayers.push(highlightLayer);
+                } catch (error) {
+                    console.warn('Error creating highlight for feature:', error);
+                }
+            }
+        }
+        
+        // Add all layers in this batch to the map at once
+        batchLayers.forEach(layer => {
+            highlightedLayers.push(layer);
+            layer.addTo(window.map);
+        });
+        
+        // If more features to process, schedule next batch
+        if (endIndex < selectedFeatures.length) {
+            requestAnimationFrame(() => createHighlightBatch(endIndex));
+        }
+    }
+    
+    // Start batch processing
+    createHighlightBatch(0);
 }
 
 // Clear all selections

@@ -3,6 +3,77 @@
  * Contains shared functions used across multiple modules
  */
 
+// === INITIALIZATION LOADING SCREEN MANAGEMENT ===
+let initializationLoadingState = {
+    hasShown: false,
+    timerId: null
+};
+
+// Show the initialization loading animation (only once per session)
+function showInitializationLoading() {
+    // Only show once per browser session
+    if (initializationLoadingState.hasShown) {
+        return;
+    }
+    
+    const overlay = document.getElementById('layersLoadingOverlay');
+    const progress = document.getElementById('loadingProgress');
+    
+    if (overlay) {
+        initializationLoadingState.hasShown = true;
+        overlay.classList.remove('hidden');
+        overlay.style.display = 'flex';
+        
+        if (progress) {
+            progress.textContent = 'Fetching Layers';
+        }
+        
+        // Auto-hide after exactly 1 second
+        initializationLoadingState.timerId = setTimeout(() => {
+            hideInitializationLoading();
+        }, 3500);
+        
+        console.log('🔄 Showing initialization loading screen (1 second)');
+    }
+}
+
+// Hide the initialization loading animation
+function hideInitializationLoading() {
+    const overlay = document.getElementById('layersLoadingOverlay');
+    
+    if (overlay) {
+        // Clear timer if it exists
+        if (initializationLoadingState.timerId) {
+            clearTimeout(initializationLoadingState.timerId);
+            initializationLoadingState.timerId = null;
+        }
+        
+        // Smooth fade out with animation
+        overlay.classList.add('hidden');
+        
+        // Completely hide after animation
+        setTimeout(() => {
+            overlay.style.display = 'none';
+        }, 500);
+        
+        console.log('✅ Initialization loading screen hidden');
+    }
+}
+
+// Export initialization loading functions to window
+window.showInitializationLoading = showInitializationLoading;
+window.hideInitializationLoading = hideInitializationLoading;
+
+// Backward compatibility stub functions (now no-ops since we use simple 1-second timer)
+window.showLayersLoading = showInitializationLoading; // Maps to new function
+window.hideLayersLoading = function() { /* no-op - auto-hides after 1 second */ };
+window.updateLoadingProgress = function() { /* no-op - not needed for simple timer */ };
+window.checkLoadingComplete = function() { /* no-op - auto-hides after 1 second */ };
+window.trackLayerLoading = function() { /* no-op - not needed for simple timer */ };
+window.markLayerLoaded = function() { /* no-op - not needed for simple timer */ };
+window.resetLoadingState = function() { /* no-op - not needed for simple timer */ };
+window.loadingState = { /* stub object for backward compatibility */ };
+
 // Supabase layer database functions
 async function saveDynamicLayerToDatabase(layerId, layerName, geoJsonData) {
     try {
@@ -46,67 +117,7 @@ async function saveDynamicLayerToDatabase(layerId, layerName, geoJsonData) {
     }
 }
 
-// Load initial data from Supabase
-async function loadInitialData() {
-    console.log('Loading initial data...');
-    
-    try {
-        if (!window.supabase || !window.currentUser) {
-            console.warn('Supabase or currentUser not available - skipping initial data load');
-            return;
-        }
-
-        // Load permanent layers from Supabase Storage first
-        if (typeof window.loadPermanentLayersWithSymbology === 'function') {
-            console.log('🗂️ Loading permanent layers from Supabase Storage...');
-            await window.loadPermanentLayersWithSymbology();
-        }
-
-        // Then load user layers from database
-        const { data: layers, error } = await window.supabase
-            .from('layers')
-            .select('*')
-            .eq('user_id', window.currentUser.id)
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error('Error loading layers from database:', error);
-            return;
-        }
-
-        if (layers && layers.length > 0) {
-            console.log(`Loading ${layers.length} layers from database...`);
-            
-            for (const layerRecord of layers) {
-                try {
-                    await addDataToMap(
-                        layerRecord.geojson_data, 
-                        layerRecord.name,
-                        {
-                            source: 'database',
-                            layerId: layerRecord.layer_id,
-                            style: layerRecord.style
-                        }
-                    );
-                } catch (error) {
-                    console.error(`Error loading layer ${layerRecord.name}:`, error);
-                }
-            }
-        } else {
-            console.log('No layers found in database');
-        }
-        
-        // Initialize selection layer dropdown after initial data is loaded
-        setTimeout(() => {
-            if (typeof window.initializeLayerDropdown === 'function') {
-                window.initializeLayerDropdown();
-            }
-        }, 200);
-
-    } catch (error) {
-        console.error('Error in loadInitialData:', error);
-    }
-}
+// Layer loading logic moved to layer-manager.js to prevent duplicates
 
 // Layer management functions moved to layer-manager.js
 
@@ -143,6 +154,11 @@ function removeLayer(layerId) {
     // Update UI
     updateLayersList();
     updateLegend();
+    
+    // Refresh label system if available
+    if (typeof window.refreshLabelsOnLayerChange === 'function') {
+        window.refreshLabelsOnLayerChange();
+    }
 }
 
 function updateLegend() {
@@ -200,7 +216,7 @@ function setupFileUploadListeners() {
 
 // Export functions globally
 window.saveDynamicLayerToDatabase = saveDynamicLayerToDatabase;
-window.loadInitialData = loadInitialData;
+// loadInitialData exported from layer-manager.js to prevent duplicates
 // updateLayersList, createLayerItem, toggleLayerVisibility exported from layer-manager.js
 window.zoomToLayer = zoomToLayer;
 window.removeLayer = removeLayer;
