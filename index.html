@@ -6,10 +6,10 @@
     <title>Aera Link</title>
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon_io">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon_io/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon_io/favicon-16x16.png">
     <link rel="shortcut icon" href="favicon_io/favicon-32x32.png">
-    <link rel="apple-touch-icno, on" sizes="180x180" href="favicon_io/apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="favicon_io/apple-touch-icon.png">
     <meta name="msapplication-TileImage" content="assets/AERA LOGO.png">
     <meta name="msapplication-TileColor" content="#000000">
     <meta name="theme-color" content="#00ffe7">
@@ -55,10 +55,42 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="bg-pure-black text-light-gray overflow-hidden">
+    <!-- SVG Definitions for Search Tool Chase Glow Effect -->
+    <svg width="0" height="0" style="position: absolute;">
+        <defs>
+            <!-- Standard glow filter for selected-glow class -->
+            <filter id="glow-1" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+                <feOffset in="blur" dx="0" dy="0" result="offset"/>
+                <feFlood flood-color="#00ffe7" flood-opacity="0.8"/>
+                <feComposite in2="offset" operator="in" result="glow"/>
+                <feMerge>
+                    <feMergeNode in="glow"/>
+                    <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+            </filter>
+            
+            <!-- Enhanced chase glow filter for chase-glow class -->
+            <filter id="chase-double-stroke" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+                <feOffset in="blur" dx="0" dy="0" result="offset"/>
+                <feFlood flood-color="#00ffe7" flood-opacity="0.6"/>
+                <feComposite in2="offset" operator="in" result="glow"/>
+                <feMerge>
+                    <feMergeNode in="glow"/>
+                    <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+            </filter>
+        </defs>
+    </svg>
+    
     <!-- Tauri API is automatically injected when withGlobalTauri is enabled -->
     
     <!-- Authentication Module -->
     <script src="js/authentication.js"></script>
+    
+    <!-- Window Controls Module -->
+    <script type="module" src="js/window-controls.js"></script>
     
     <!-- Collaborative Mode Module -->
     <script src="js/collaborative-mode.js"></script>
@@ -68,6 +100,9 @@
     
     <!-- Filter System Module -->
     <script src="js/filter-system.js"></script>
+    
+    <!-- Unified Selection Visuals Module -->
+    <script src="js/unified-selection-visuals.js"></script>
     
     <!-- Selection Tools Module -->
     <script src="js/selection-tools.js"></script>
@@ -83,6 +118,9 @@
 
     <!-- Interaction Handlers Module -->
     <script src="js/interaction-handlers.js"></script>
+
+    <!-- Lot Search Module -->
+    <script type="module" src="js/lot-search.js"></script>
     <script>
       document.addEventListener('DOMContentLoaded', () => {
         try {
@@ -183,8 +221,36 @@
         
         <!-- Header -->
         <div class="header-container">
-            <header class="bg-pure-black fixed top-0 left-0 right-0 z-50 px-4 py-2 h-10">
+            <header class="bg-pure-black fixed top-0 left-0 right-0 z-50 px-4 py-2 h-10" id="titlebar">
                 <div class="flex items-center justify-between h-full">
+                    <!-- Left Side: Window Controls -->
+                    <div class="flex items-center space-x-2">
+                        <div id="window-controls" class="flex items-center space-x-1">
+                            <button id="close-btn" class="window-control-btn close-btn" title="Close">
+                                <div class="window-control-dot"></div>
+                            </button>
+                            <button id="minimize-btn" class="window-control-btn minimize-btn" title="Minimize">
+                                <div class="window-control-dot"></div>
+                            </button>
+                            <button id="maximize-btn" class="window-control-btn maximize-btn" title="Maximize">
+                                <div class="window-control-dot"></div>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Centered Search Bar -->
+                    <div class="flex-1 flex justify-center">
+                        <div class="fixed top-0.5 left-1/2 transform -translate-x-1/2 z-50 max-w-sm w-full">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-search text-gray-400 text-sm"></i>
+                                </div>
+                                <input type="text" id="headerSearchInput" class="w-full pl-10 pr-4 py-1.5 bg-pure-black/60 backdrop-blur-sm border border-neon-teal/30 rounded-full text-light-gray text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-neon-teal/50 focus:border-neon-teal transition-all" placeholder="Search...">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Side: Mode Toggle and Logout -->
                     <div class="flex items-center space-x-3">
                         <!-- Personal/Collaborative Mode Toggle -->
                         <div class="flex items-center space-x-2 bg-pure-black/80 backdrop-blur-sm px-3 py-1 rounded border border-neon-teal/30">
@@ -201,25 +267,6 @@
                                 </div>
                                 <span class="text-xs text-gray-400" id="collaborativeModeLabel">Collaborative</span>
                             </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Centered Search Bar -->
-                    <div class="flex-1 flex justify-center">
-                        <div class="w-full max-w-md">
-                            <div class="relative">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <i class="fas fa-search text-gray-400 text-sm"></i>
-                                </div>
-                                <input type="text" id="headerSearchInput" class="w-full pl-10 pr-4 py-1.5 bg-pure-black/60 backdrop-blur-sm border border-neon-teal/30 rounded-full text-light-gray text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-neon-teal/50 focus:border-neon-teal transition-all" placeholder="Search...">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- User Avatar and Logout -->
-                    <div class="flex items-center space-x-3">
-                        <div id="userAvatar" class="w-7 h-7 bg-neon-teal rounded-full flex items-center justify-center border border-white/20 cursor-pointer hover:shadow-neon-glow-sm transition-all">
-                            <span id="userInitial" class="text-pure-black text-sm font-bold uppercase"></span>
                         </div>
                         <button id="logoutButton" class="text-light-gray hover:text-neon-teal transition-colors text-sm flex items-center space-x-1">
                             <i class="fas fa-sign-out-alt text-xs"></i>
@@ -262,19 +309,18 @@
                     </div>
                 </div>
                 
-                <!-- User Profile Section -->
-                <div class="nav-user-profile">
-                    <div class="nav-user-content">
-                        <div class="nav-user-avatar">
-                            <span id="navUserInitial" class="nav-user-initial"></span>
-                        </div>
-                        <div class="nav-user-info">
-                            <span class="nav-user-name" id="navUserName">User</span>
-                            <span class="nav-user-email" id="navUserEmail">user@email.com</span>
-                        </div>
-                    </div>
-                </div>
             </nav>
+            
+            <!-- User Profile Section -->
+            <div class="nav-user-profile">
+                <div class="nav-user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="nav-user-info">
+                    <div id="userDisplayName" class="nav-user-name">User</div>
+                    <div id="userEmail" class="nav-user-email">user@email.com</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1157,6 +1203,7 @@
     
     <!-- PapaParse for CSV support -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <!-- Global State Module -->
     <script src="js/global.js"></script>
@@ -1546,24 +1593,36 @@
             }
         });
 
-        // Initialize user interface with avatar
+        // Initialize user interface
         function initializeUserInterface(user) {
-            // Set user avatar with initial (header)
-            const userInitial = user.email.charAt(0).toUpperCase();
-            document.getElementById('userInitial').textContent = userInitial;
+            // Get user profile from email mapping
+            const profile = window.getUserProfileFromEmail ? window.getUserProfileFromEmail(user.email) : null;
             
-            // Set navigation sidebar user info
-            document.getElementById('navUserInitial').textContent = userInitial;
-            document.getElementById('navUserName').textContent = user.email.split('@')[0]; // Use email username
-            document.getElementById('navUserEmail').textContent = user.email;
+            // Update user display name
+            const userDisplayNameElement = document.getElementById('userDisplayName');
+            if (userDisplayNameElement) {
+                const displayName = profile?.name || 
+                                  user.user_metadata?.full_name || 
+                                  user.user_metadata?.name || 
+                                  user.email.split('@')[0];
+                userDisplayNameElement.textContent = displayName;
+            }
             
-            // Keep email for backward compatibility (but hidden)
+            // Update user avatar with single letter
+            const userAvatarElement = document.querySelector('.nav-user-avatar');
+            if (userAvatarElement && profile?.avatar) {
+                userAvatarElement.innerHTML = `<span style="font-weight: bold; font-size: 16px;">${profile.avatar}</span>`;
+            }
+            
+            // Update user email
             const userEmailElement = document.getElementById('userEmail');
             if (userEmailElement) {
                 userEmailElement.textContent = user.email;
-                userEmailElement.style.display = 'none'; // Hide the full email
             }
         }
+
+        // Make initializeUserInterface globally available
+        window.initializeUserInterface = initializeUserInterface;
 
         // Initialize WebGIS components
         function initializeWebGIS() {
@@ -1931,3 +1990,4 @@
 </body>
 </html>
 
+f

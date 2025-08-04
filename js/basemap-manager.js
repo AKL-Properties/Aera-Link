@@ -621,6 +621,7 @@ function initBasemaps(mapInstance) {
     
     // Initialize basemap definitions
     initializeBasemaps();
+    
     console.log(`Loaded ${Object.keys(basemaps).length} basemap providers`);
     
     // Set initial basemap to Google Satellite (no labels) as default
@@ -648,6 +649,83 @@ function initBasemaps(mapInstance) {
     console.log('Basemap system initialization complete');
 }
 
+// Inject SVG filter definitions for neon glow selection effect
+function injectSelectionGlowFilters(mapInstance) {
+    if (!mapInstance) {
+        console.error('Map instance is required for SVG filter injection');
+        return;
+    }
+    
+    const mapContainer = mapInstance.getContainer();
+    if (!mapContainer) {
+        console.error('Map container not found for SVG filter injection');
+        return;
+    }
+    
+    // Check if filters already exist to prevent duplicates
+    if (mapContainer.querySelector('svg defs')) {
+        console.log('🎨 SVG glow filters already exist, skipping injection');
+        return;
+    }
+    
+    // Create SVG element with filter definitions
+    const svgFilters = document.createElement('svg');
+    svgFilters.style.position = 'absolute';
+    svgFilters.style.width = '0';
+    svgFilters.style.height = '0';
+    svgFilters.style.pointerEvents = 'none';
+    svgFilters.innerHTML = `
+        <defs>
+            <!-- Base glow filter (not used directly, but can be referenced) -->
+            <filter id="glow-0" filterUnits="userSpaceOnUse">
+                <feGaussianBlur stdDeviation="var(--b, 4)" result="coloredBlur"/>
+                <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+            </filter>
+            
+            <!-- Animated neon glow filter for Aera polygons -->
+            <filter id="glow-1" filterUnits="userSpaceOnUse" x="-20%" y="-20%" width="140%" height="140%">
+                <!-- Create the main glow effect -->
+                <feGaussianBlur stdDeviation="3" in="SourceGraphic" result="blur1"/>
+                <feGaussianBlur stdDeviation="6" in="SourceGraphic" result="blur2"/>
+                <feGaussianBlur stdDeviation="12" in="SourceGraphic" result="blur3"/>
+                
+                <!-- Color the glow layers with neon teal -->
+                <feColorMatrix in="blur1" result="glow1" type="matrix" 
+                               values="0 0.9 0.9 0 0
+                                       0 1   1   0 0
+                                       0 0.9 1   0 0
+                                       0 0   0   0.8 0"/>
+                <feColorMatrix in="blur2" result="glow2" type="matrix" 
+                               values="0 0.8 0.8 0 0
+                                       0 1   1   0 0
+                                       0 0.8 1   0 0
+                                       0 0   0   0.6 0"/>
+                <feColorMatrix in="blur3" result="glow3" type="matrix" 
+                               values="0 0.7 0.7 0 0
+                                       0 1   1   0 0
+                                       0 0.7 1   0 0
+                                       0 0   0   0.4 0"/>
+                
+                <!-- Merge all layers with the original on top -->
+                <feMerge>
+                    <feMergeNode in="glow3"/>
+                    <feMergeNode in="glow2"/>
+                    <feMergeNode in="glow1"/>
+                    <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+            </filter>
+        </defs>
+    `;
+    
+    // Insert the SVG at the beginning of the map container
+    mapContainer.insertBefore(svgFilters, mapContainer.firstChild);
+    
+    console.log('🎨 SVG neon glow filters injected successfully');
+}
+
 // Export functions to global scope for compatibility
 window.initBasemaps = initBasemaps;
 window.initializeBasemaps = initializeBasemaps;
@@ -659,6 +737,7 @@ window.setupMapContextMenu = setupMapContextMenu;
 window.isClickOnFeature = isClickOnFeature;
 window.showMapContextMenu = showMapContextMenu;
 window.hideMapContextMenu = hideMapContextMenu;
+window.injectSelectionGlowFilters = injectSelectionGlowFilters;
 
 // Also export basemap-related global variables for compatibility
 window.currentBasemap = currentBasemap;

@@ -880,12 +880,19 @@ function setupLayerSynchronization() {
     }
 }
 
-// Export high-resolution map using native Tauri renderer
+// Export high-resolution map using native Tauri renderer or browser fallback
 async function exportHighResolutionMap() {
-    if (!isTauriEnvironment()) {
-        await showError('Export functionality requires the desktop version of this app.');
-        return;
+    const isTauri = isTauriEnvironment();
+    
+    if (isTauri) {
+        return await exportHighResolutionMapTauri();
+    } else {
+        return await exportHighResolutionMapBrowser();
     }
+}
+
+// Export using Tauri native renderer
+async function exportHighResolutionMapTauri() {
     
     try {
         const canvasWidth = parseInt(document.getElementById('canvasWidth')?.value || 1920);
@@ -982,6 +989,75 @@ async function exportHighResolutionMap() {
         const exportBtn = document.getElementById('exportMapBtn');
         exportBtn.innerHTML = originalText;
         exportBtn.disabled = false;
+    }
+}
+
+// Export using browser html2canvas fallback
+async function exportHighResolutionMapBrowser() {
+    const exportBtn = document.getElementById('exportMapBtn');
+    const originalText = exportBtn ? exportBtn.innerHTML : '';
+    
+    try {
+        // Update button state
+        if (exportBtn) {
+            exportBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Exporting...';
+            exportBtn.disabled = true;
+        }
+
+        // Get export settings
+        const format = document.getElementById('exportFormat')?.value || 'png';
+        const title = document.getElementById('mapTitle')?.value || '';
+        
+        // Get map container
+        const mapContainer = document.getElementById('map');
+        if (!mapContainer) {
+            throw new Error('Map container not found');
+        }
+
+        // Capture the map using html2canvas
+        const canvas = await html2canvas(mapContainer, {
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            scale: 2, // Higher resolution
+            logging: false,
+            removeContainer: false,
+            foreignObjectRendering: false,
+            imageTimeout: 30000
+        });
+
+        // Convert to blob and download
+        canvas.toBlob(async (blob) => {
+            if (!blob) {
+                throw new Error('Failed to create image blob');
+            }
+
+            // Create download filename
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+            const filename = `aera-link-export-${timestamp}.${format}`;
+
+            // Download the file
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            await showSuccess(`Map exported successfully as ${filename}`);
+        }, `image/${format}`, 0.95);
+
+    } catch (error) {
+        console.error('Browser export error:', error);
+        await showError(`Export failed: ${error.message}`);
+    } finally {
+        // Restore button state
+        if (exportBtn) {
+            exportBtn.innerHTML = originalText;
+            exportBtn.disabled = false;
+        }
     }
 }
 

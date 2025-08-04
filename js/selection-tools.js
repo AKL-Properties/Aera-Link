@@ -3,9 +3,6 @@ function safeBindPopup(layer, content) {
   console.warn("safeBindPopup: not implemented yet", layer, content);
 }
 // Selection Tools Module
-// Import turf.booleanIntersects for robust polygon intersection
-// If using turf as a global, skip this import and use turf.booleanIntersects directly
-// import booleanIntersects from '@turf/boolean-intersects';
 // Handles all feature selection and drawing functionality
 
 // Selection tool variables - using global scope for compatibility
@@ -15,6 +12,9 @@ let isSelectionActive = false;
 let selectedFeatures = [];
 let highlightedLayers = [];
 let popupsDisabled = false; // Flag to track if popups are disabled during selection
+let selectionOverlayMask = null; // Black overlay mask for selection emphasis
+let maskUpdateHandlers = null; // Map event handlers for mask updates
+let selectionVisualLayers = { mask: null, overlay: null }; // Store visual layers for cleanup
 
 // Global memory structure for selected features
 window.selectedFeaturesMemory = {
@@ -75,13 +75,13 @@ window.selectedFeaturesMemory = {
     }
 };
 
-// Two-click freehand drawing variables
+// Drawing state variables
 let isDrawing = false;
 let drawingPath = [];
 let currentDrawingLayer = null;
 let currentFillLayer = null;
-let activeSelectionLayerId = null; // Track which layer is active for selection
-let hasStartedDrawing = false; // Track if first click has been made (for two-click mode)
+let activeSelectionLayerId = null;
+let hasStartedDrawing = false;
 
 // Initialize selection tools
 function initializeSelectionTools(map) {
@@ -204,9 +204,8 @@ function initializeSelectionTools(map) {
         }
     }
 
-    // Remove the mouse up handler since we're using two-click mode
+    // Mouse up handler - not used in two-click mode
     function handleMouseUp(e) {
-        // No longer needed for two-click mode
         return;
     }
 
@@ -224,7 +223,6 @@ function initializeLayerDropdown() {
     if (typeof window.updateSelectionLayerDropdown === 'function') {
         try {
             window.updateSelectionLayerDropdown();
-            console.log('Selection dropdown initialized using updateSelectionLayerDropdown');
             return;
         } catch (error) {
             console.warn('Error calling updateSelectionLayerDropdown, using fallback:', error);
@@ -256,8 +254,6 @@ function initializeLayerDropdown() {
             }
         });
         
-        console.log(`Selection dropdown fallback populated with ${visibleLayerCount} visible layers`);
-        
         // Update button states based on available layers
         const activateBtn = document.getElementById('activateSelectTool');
         if (activateBtn) {
@@ -270,8 +266,6 @@ function initializeLayerDropdown() {
                 activateBtn.classList.add('opacity-50', 'cursor-not-allowed');
             }
         }
-    } else {
-        console.log('No layers available for selection dropdown');
     }
 }
 
@@ -403,6 +397,9 @@ function deactivateSelectionTool() {
         // Reset cursor
         window.map.getContainer().style.cursor = '';
         
+        // Clear selection visuals when deactivating tool
+        clearSelectionVisuals();
+        
         // Update button states
         document.getElementById('activateSelectTool').innerHTML = '<i class="fas fa-draw-polygon mr-2"></i>Activate Selection Tool';
         document.getElementById('activateSelectTool').classList.remove('glass-button-active');
@@ -455,7 +452,6 @@ function disablePopupsOnAllLayers() {
         });
     }
     
-    console.log(`🔇 Disabled popups on ${disabledCount} layers for selection mode`);
 }
 
 // Helper function to disable popup on a single layer
@@ -512,7 +508,6 @@ function enablePopupsOnAllLayers() {
         });
     }
     
-    console.log(`🔊 Re-enabled popups on ${enabledCount} layers after selection mode`);
 }
 
 // Helper function to enable popup on a single layer
@@ -663,7 +658,6 @@ function findIntersectingFeaturesWithPolygon(polygonPath, modifierKeys = {}) {
     }
 
     function finishSelection() {
-        console.log(`Spatial selection completed: ${intersectingFeatures.length} intersecting features found (processed: ${processedCount}, skipped: ${skippedCount})`);
 
         // Apply selection based on modifier keys
         if (modifierKeys.ctrlKey || modifierKeys.metaKey) {
@@ -724,11 +718,143 @@ function findIntersectingFeaturesWithPolygon(polygonPath, modifierKeys = {}) {
     }
 }
 
-// Update visual highlights for selected features (optimized with batching)
+// Update visual highlights for selected features using clean, non-animated approach
 function updateHighlights() {
-    // Clear existing highlights efficiently
+    // Clear existing visual layers
+    clearSelectionVisuals();
+
+    // Early exit if no features to highlight
+    if (selectedFeatures.length === 0) {
+        return;
+    }
+
+    // Apply clean selection visuals without animation
+    applySelectionVisuals(selectedFeatures);
+}
+
+// Apply clean selection visuals mimicking Search Tool approach without animation
+function applySelectionVisuals(features) {
+    if (!features || features.length === 0 || !window.map) {
+        return;
+    }
+
+    try {
+        // 1. Create selected features overlay with L.geoJSON() and L.svg() renderer
+        const selectedFeatureCollection = {
+            type: 'FeatureCollection',
+            features: features
+        };
+
+        const selectionOverlay = L.geoJSON(selectedFeatureCollection, {
+            renderer: L.svg(),
+            style: {
+                color: '#00ffe7',
+                weight: 3,
+                opacity: 0,
+                fill: false
+            }
+        }).addTo(window.map);
+
+        // 2. Create reverse black mask with holes for selected features
+        const maskLayer = createReverseMask(features);
+        if (maskLayer) {
+            maskLayer.addTo(window.map);
+            // Ensure mask is below the selection overlay
+            maskLayer.bringToBack();
+        }
+
+        // Store references for cleanup
+        selectionVisualLayers.overlay = selectionOverlay;
+        selectionVisualLayers.mask = maskLayer;
+
+        console.log(`✅ Applied clean selection visuals for ${features.length} features`);
+
+    } catch (error) {
+        console.error('❌ Error applying selection visuals:', error);
+    }
+}
+
+// Create reverse black mask with holes for selected features
+function createReverseMask(features) {
+    if (!features || features.length === 0) {
+        return null;
+    }
+
+    try {
+        // Use large static bounding box to cover Metro Manila and Cavite area
+        // This prevents mask edge visibility when zooming/panning
+        const outerRing = [
+            [119.5, 13.5],
+            [122.5, 13.5],
+            [122.5, 15.2],
+            [119.5, 15.2],
+            [119.5, 13.5]
+        ];
+
+        // Collect all holes from selected features
+        const holes = [];
+        features.forEach(feature => {
+            if (feature.geometry) {
+                if (feature.geometry.type === 'Polygon') {
+                    // Use outer ring of polygon as hole
+                    holes.push(feature.geometry.coordinates[0]);
+                } else if (feature.geometry.type === 'MultiPolygon') {
+                    // Add each polygon's outer ring as separate holes
+                    feature.geometry.coordinates.forEach(polygon => {
+                        holes.push(polygon[0]);
+                    });
+                }
+                // Skip Point and LineString geometries for mask holes
+            }
+        });
+
+        if (holes.length === 0) {
+            return null;
+        }
+
+        // Create mask polygon with outer ring and holes
+        const maskGeometry = {
+            type: 'Feature',
+            geometry: {
+                type: 'Polygon',
+                coordinates: [outerRing, ...holes]
+            }
+        };
+
+        // Create mask layer
+        const maskLayer = L.geoJSON(maskGeometry, {
+            style: {
+                fillColor: 'black',
+                fillOpacity: 0.6,
+                color: 'transparent',
+                weight: 0
+            }
+        });
+
+        return maskLayer;
+
+    } catch (error) {
+        console.error('❌ Error creating reverse mask:', error);
+        return null;
+    }
+}
+
+// Clear selection visual layers
+function clearSelectionVisuals() {
+    // Remove overlay layer
+    if (selectionVisualLayers.overlay && window.map.hasLayer(selectionVisualLayers.overlay)) {
+        window.map.removeLayer(selectionVisualLayers.overlay);
+        selectionVisualLayers.overlay = null;
+    }
+
+    // Remove mask layer
+    if (selectionVisualLayers.mask && window.map.hasLayer(selectionVisualLayers.mask)) {
+        window.map.removeLayer(selectionVisualLayers.mask);
+        selectionVisualLayers.mask = null;
+    }
+
+    // Clear legacy highlighted layers for compatibility
     if (highlightedLayers.length > 0) {
-        // Batch remove all highlight layers
         highlightedLayers.forEach(layer => {
             if (window.map.hasLayer(layer)) {
                 window.map.removeLayer(layer);
@@ -737,77 +863,17 @@ function updateHighlights() {
         highlightedLayers = [];
     }
 
-    // Early exit if no features to highlight
-    if (selectedFeatures.length === 0) {
-        return;
-    }
-
-    // Create highlights in batches for better performance
-    const batchSize = 50; // Process 50 features at a time
-    
-    function createHighlightBatch(startIndex) {
-        const endIndex = Math.min(startIndex + batchSize, selectedFeatures.length);
-        const batchLayers = [];
-        
-        for (let i = startIndex; i < endIndex; i++) {
-            const feature = selectedFeatures[i];
-            if (feature && feature.geometry) {
-                try {
-                    const highlightLayer = L.geoJSON(feature, {
-                        renderer: L.canvas(), // Force canvas rendering for export compatibility
-                        style: {
-                            color: '#ffff00',
-                            weight: 4,
-                            opacity: 1,
-                            fillColor: '#ffff00',
-                            fillOpacity: 0.3
-                        },
-                        pointToLayer: function(feature, latlng) {
-                            return L.circleMarker(latlng, {
-                                radius: 8,
-                                color: '#ffff00',
-                                weight: 4,
-                                opacity: 1,
-                                fillColor: '#ffff00',
-                                fillOpacity: 0.3
-                            });
-                        }
-                    });
-                    
-                    batchLayers.push(highlightLayer);
-                } catch (error) {
-                    console.warn('Error creating highlight for feature:', error);
-                }
-            }
-        }
-        
-        // Add all layers in this batch to the map at once
-        batchLayers.forEach(layer => {
-            highlightedLayers.push(layer);
-            layer.addTo(window.map);
-        });
-        
-        // If more features to process, schedule next batch
-        if (endIndex < selectedFeatures.length) {
-            requestAnimationFrame(() => createHighlightBatch(endIndex));
-        }
-    }
-    
-    // Start batch processing
-    createHighlightBatch(0);
+    // Remove legacy overlay mask
+    removeSelectionOverlayMask();
 }
+
 
 // Clear all selections
 function clearSelection() {
     selectedFeatures = [];
     
-    // Clear visual highlights
-    highlightedLayers.forEach(layer => {
-        if (window.map.hasLayer(layer)) {
-            window.map.removeLayer(layer);
-        }
-    });
-    highlightedLayers = [];
+    // Clear new visual layers
+    clearSelectionVisuals();
     
     // Clear global memory
     window.selectedFeaturesMemory.clear();
@@ -1313,6 +1379,187 @@ window.getActiveSelectionLayerId = getActiveSelectionLayerId;
 window.setActiveSelectionLayerId = setActiveSelectionLayerId;
 window.getIsSelectionActive = getIsSelectionActive;
 
+// Helper function to determine if a feature is from Aera layer
+function isFeatureFromAeraLayer(feature) {
+    if (!feature || !window.layers) {
+        return false;
+    }
+    
+    // Check if the active selection layer is an Aera layer
+    if (activeSelectionLayerId && window.layers.has(activeSelectionLayerId)) {
+        const layerInfo = window.layers.get(activeSelectionLayerId);
+        if (layerInfo && (layerInfo.name === 'Aera' || layerInfo.name === 'Aera.geojson')) {
+            return true;
+        }
+    }
+    
+    // Alternative check: look for Aera-specific properties in the feature
+    if (feature.properties) {
+        // Common Aera.geojson property indicators
+        const aeraProperties = ['REGISTERED OWNER', 'TCT NO.', 'LOT NO.', 'AREA (SQM)'];
+        const hasAeraProps = aeraProperties.some(prop => 
+            Object.hasOwnProperty.call(feature.properties, prop)
+        );
+        if (hasAeraProps) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+
+
+// Update mask cutouts to match current map view and selected polygons
+function updateMaskCutouts() {
+    if (!selectionOverlayMask || !selectionOverlayMask._mask || selectedFeatures.length === 0) {
+        return;
+    }
+
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const mask = selectionOverlayMask._mask;
+
+    // Remove existing polygon cutout paths (preserve white background)
+    const existingPaths = mask.querySelectorAll('path');
+    existingPaths.forEach(path => path.remove());
+
+    // Create black polygon cutouts for each selected feature
+    // Black areas in the mask = transparent (no dimming)
+    selectedFeatures.forEach((feature, index) => {
+        try {
+            if (feature.geometry && feature.geometry.coordinates) {
+                const coords = feature.geometry.coordinates;
+                let pathData = '';
+
+                if (feature.geometry.type === 'Polygon') {
+                    // Single polygon - use outer ring only
+                    const ring = coords[0];
+                    pathData = createPathFromCoordinates(ring);
+                } else if (feature.geometry.type === 'MultiPolygon') {
+                    // Multiple polygons - process each one
+                    coords.forEach(polygon => {
+                        const ring = polygon[0]; // Outer ring of each polygon
+                        const polygonPath = createPathFromCoordinates(ring);
+                        if (polygonPath) {
+                            pathData += polygonPath + ' ';
+                        }
+                    });
+                } else if (feature.geometry.type === 'Point') {
+                    // Create circular cutout for point features
+                    const point = window.map.latLngToContainerPoint([coords[1], coords[0]]);
+                    const radius = 15; // 15px radius for points
+                    pathData = `M ${point.x - radius} ${point.y} 
+                               A ${radius} ${radius} 0 1 1 ${point.x + radius} ${point.y} 
+                               A ${radius} ${radius} 0 1 1 ${point.x - radius} ${point.y} Z`;
+                } else if (feature.geometry.type === 'LineString' || feature.geometry.type === 'MultiLineString') {
+                    // Skip line features - no visual buffer needed
+                    return;
+                }
+
+                if (pathData.trim()) {
+                    const cutoutPath = document.createElementNS(svgNS, 'path');
+                    cutoutPath.setAttribute('d', pathData.trim());
+                    cutoutPath.setAttribute('fill', 'black'); // Black = no mask = visible
+                    cutoutPath.setAttribute('fill-rule', 'evenodd');
+                    cutoutPath.setAttribute('class', 'selection-mask-cutout');
+                    mask.appendChild(cutoutPath);
+                }
+            }
+        } catch (error) {
+            console.warn(`Error updating mask cutout for feature ${index}:`, error);
+        }
+    });
+}
+
+// Set up map event handlers for dynamic mask updates
+function setupMaskUpdateHandlers() {
+    if (!window.map || maskUpdateHandlers) {
+        return; // Handlers already set up
+    }
+
+    // Create optimized update function with debouncing
+    let updateTimeout = null;
+    const debouncedUpdate = () => {
+        if (updateTimeout) {
+            clearTimeout(updateTimeout);
+        }
+        updateTimeout = setTimeout(() => {
+            if (selectionOverlayMask && selectedFeatures.length > 0) {
+                updateMaskCutouts();
+            }
+        }, 16); // ~60fps update rate
+    };
+
+    // Store handlers for cleanup
+    maskUpdateHandlers = {
+        moveend: debouncedUpdate,
+        zoomend: debouncedUpdate,
+        viewreset: debouncedUpdate
+    };
+
+    // Add event listeners
+    window.map.on('moveend', maskUpdateHandlers.moveend);
+    window.map.on('zoomend', maskUpdateHandlers.zoomend);
+    window.map.on('viewreset', maskUpdateHandlers.viewreset);
+
+}
+
+// Remove map event handlers for mask updates
+function removeMaskUpdateHandlers() {
+    if (!window.map || !maskUpdateHandlers) {
+        return;
+    }
+
+    // Remove event listeners
+    window.map.off('moveend', maskUpdateHandlers.moveend);
+    window.map.off('zoomend', maskUpdateHandlers.zoomend);
+    window.map.off('viewreset', maskUpdateHandlers.viewreset);
+
+    maskUpdateHandlers = null;
+}
+
+// Remove the selection overlay mask
+function removeSelectionOverlayMask() {
+    if (selectionOverlayMask && selectionOverlayMask.parentNode) {
+        selectionOverlayMask.parentNode.removeChild(selectionOverlayMask);
+        selectionOverlayMask = null;
+    }
+    
+    // Clean up mask update handlers
+    removeMaskUpdateHandlers();
+}
+
+// Convert geographic coordinates to SVG path data in screen space
+function createPathFromCoordinates(coordinates) {
+    if (!coordinates || coordinates.length === 0) {
+        return '';
+    }
+
+    let pathData = '';
+    coordinates.forEach((coord, index) => {
+        // Convert lat/lng to current screen coordinates
+        const point = window.map.latLngToContainerPoint([coord[1], coord[0]]);
+        
+        // Ensure coordinates are finite and within reasonable bounds
+        if (!isFinite(point.x) || !isFinite(point.y)) {
+            return; // Skip invalid coordinates
+        }
+        
+        if (index === 0) {
+            pathData += `M ${point.x} ${point.y}`;
+        } else {
+            pathData += ` L ${point.x} ${point.y}`;
+        }
+    });
+    
+    if (pathData) {
+        pathData += ' Z'; // Close the path
+    }
+    
+    return pathData;
+}
+
+
 // Make activeSelectionLayerId globally accessible for layer-manager.js
 Object.defineProperty(window, 'activeSelectionLayerId', {
     get: function() { return activeSelectionLayerId; },
@@ -1321,3 +1568,12 @@ Object.defineProperty(window, 'activeSelectionLayerId', {
 window.safeBindPopup = safeBindPopup;
 window.disablePopupsOnAllLayers = disablePopupsOnAllLayers;
 window.enablePopupsOnAllLayers = enablePopupsOnAllLayers;
+window.isFeatureFromAeraLayer = isFeatureFromAeraLayer;
+window.createSelectionOverlayMask = createSelectionOverlayMask;
+window.removeSelectionOverlayMask = removeSelectionOverlayMask;
+window.updateMaskCutouts = updateMaskCutouts;
+window.setupMaskUpdateHandlers = setupMaskUpdateHandlers;
+window.removeMaskUpdateHandlers = removeMaskUpdateHandlers;
+window.applySelectionVisuals = applySelectionVisuals;
+window.clearSelectionVisuals = clearSelectionVisuals;
+window.createReverseMask = createReverseMask;

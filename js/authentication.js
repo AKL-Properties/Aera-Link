@@ -200,10 +200,12 @@ function setupLoginListeners() {
         if (result.success) {
             // Success - redirect to WebGIS
             const user = result.user;
-            const userEmailElement = document.getElementById('userEmail');
-            if (userEmailElement) {
-                userEmailElement.textContent = result.user.email;
+            
+            // Initialize user interface with profile mapping
+            if (typeof initializeUserInterface === 'function') {
+                initializeUserInterface(user);
             }
+            
             hideLoginPage();
             initializeWebGIS();
             
@@ -305,9 +307,42 @@ window.hideLoginPage = hideLoginPage;
 window.setupLoginListeners = setupLoginListeners;
 window.setupLogoutListener = setupLogoutListener;
 
+// User profile mapping based on email addresses
+function getUserProfileFromEmail(email) {
+    const profileMappings = {
+        'enage.isaac@akl.com.ph': { avatar: 'I', name: 'Isaac Enage' },
+        'enage.isaac@ayalaland.com.ph': { avatar: 'I', name: 'Isaac Enage' },
+        'santos.dom@ayalaland.com.ph': { avatar: 'D', name: 'Dom Santos' },
+        'tabangay.rona@ayalaland.com.ph': { avatar: 'R', name: 'Rona Tabangay' },
+        'taboso.charlotte@ayalaland.com.ph': { avatar: 'C', name: 'Charlotte' },
+        'ortiz.marvin@akl.com.ph': { avatar: 'M', name: 'Marvin Ortiz' },
+        'juarez.ang@ayalaland.com.ph': { avatar: 'A', name: 'Angelo Suarez' }
+    };
+    
+    console.log('Getting profile for email:', email);
+    const profile = profileMappings[email.toLowerCase()];
+    if (profile) {
+        console.log('Found profile mapping:', profile);
+        return profile;
+    }
+    
+    // Default fallback for unmapped emails
+    const firstLetter = email.charAt(0).toUpperCase();
+    const nameFromEmail = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    
+    const fallbackProfile = {
+        avatar: firstLetter,
+        name: nameFromEmail
+    };
+    
+    console.log('Using fallback profile:', fallbackProfile);
+    return fallbackProfile;
+}
+
 // Make currentUser and supabase globally accessible
 window.getCurrentUser = () => currentUser;
 window.getSupabase = () => supabase;
+window.getUserProfileFromEmail = getUserProfileFromEmail;
 
 // Also set them as direct global variables for backward compatibility
 window.currentUser = null;

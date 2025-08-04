@@ -1,6 +1,319 @@
+
+
 /* =======================
-   NEON TEAL THEME VARIABLES
+   LOT SEARCH DROPDOWN STYLES
    ======================= */
+
+/* Field search dropdown styles */
+#fieldSearchDropdown {
+    animation: slideDown 0.2s ease-out;
+}
+
+#fieldSearchDropdown::-webkit-scrollbar {
+    width: 6px;
+}
+
+#fieldSearchDropdown::-webkit-scrollbar-track {
+    background: rgba(18, 18, 18, 0.3);
+    border-radius: 3px;
+}
+
+#fieldSearchDropdown::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 231, 0.3);
+    border-radius: 3px;
+}
+
+#fieldSearchDropdown::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 255, 231, 0.5);
+}
+
+/* Field option hover effects */
+.field-option:hover {
+    background-color: rgba(0, 255, 231, 0.1) !important;
+    transform: translateX(2px);
+    transition: all 0.15s ease;
+}
+
+.field-option.selected {
+    background-color: rgba(0, 255, 231, 0.2) !important;
+}
+
+/* Field tag styles */
+#fieldTag {
+    transition: all 0.2s ease-in-out;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(0, 255, 231, 0.4);
+    box-shadow: 0 2px 4px rgba(0, 255, 231, 0.1);
+}
+
+/* Field indicator circular pill */
+#fieldIndicator {
+    background: transparent;
+    border: 2px solid rgba(0, 255, 231, 1);
+    border-radius: 50%;
+    transition: all 0.2s ease-in-out;
+}
+
+#fieldIndicator:hover {
+    background: rgba(0, 255, 231, 0.1);
+    border-color: rgba(0, 255, 231, 1);
+    box-shadow: 0 0 8px rgba(0, 255, 231, 0.4);
+}
+
+#fieldIndicator:active {
+    transform: scale(0.95);
+}
+
+/* Field indicator tooltip */
+#fieldTooltip {
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(0, 255, 231, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Ensure search input maintains stable layout */
+#headerSearchInput {
+    padding-left: 2.5rem !important; /* Fixed 40px padding - never changes */
+    padding-right: 1rem !important;
+}
+
+/* Custom scrollbar for search dropdown */
+#lotSearchDropdown::-webkit-scrollbar {
+    width: 6px;
+}
+
+#lotSearchDropdown::-webkit-scrollbar-track {
+    background: rgba(18, 18, 18, 0.3);
+    border-radius: 3px;
+}
+
+#lotSearchDropdown::-webkit-scrollbar-thumb {
+    background: rgba(0, 255, 231, 0.3);
+    border-radius: 3px;
+}
+
+#lotSearchDropdown::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 255, 231, 0.5);
+}
+
+/* =======================
+   MODERN POLYGON HIGHLIGHT ANIMATIONS
+   ======================= */
+
+/* Base styles for modern highlight polygons */
+.modern-highlight-polygon path {
+    transition: none !important; /* Disable default transitions for smooth real-time animation */
+    transform-origin: center center;
+    will-change: transform, filter; /* Optimize for animations */
+}
+
+.modern-highlight-shadow path {
+    transition: none !important;
+    transform-origin: center center;
+    will-change: transform;
+    opacity: 0.6;
+}
+
+/* Enhance performance for polygon animations */
+.leaflet-zoom-animated .modern-highlight-polygon path,
+.leaflet-zoom-animated .modern-highlight-shadow path {
+    transform-origin: center center;
+}
+
+/* Ensure proper stacking order for shadow effects */
+.modern-highlight-shadow {
+    z-index: 399; /* Below main highlight layer */
+}
+
+.modern-highlight-polygon {
+    z-index: 400; /* Above shadow layer */
+}
+
+/* Performance optimizations for smooth animations */
+.modern-highlight-polygon,
+.modern-highlight-shadow {
+    pointer-events: none; /* Don't interfere with map interactions */
+    backface-visibility: hidden; /* Improve performance */
+    perspective: 1000px; /* Enable 3D transforms */
+}
+
+/* Additional visual enhancements */
+.modern-highlight-polygon path {
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Keyframe animation for subtle breathing effect (fallback) */
+@keyframes polygonGlow {
+    0%, 100% {
+        filter: drop-shadow(1px 1px 2px rgba(0, 212, 170, 0.3));
+    }
+    50% {
+        filter: drop-shadow(2px 2px 5px rgba(0, 212, 170, 0.6));
+    }
+}
+
+.chase-glow {
+  stroke: #00ffe7;
+  stroke-width: 5;
+  fill: none;
+  stroke-dasharray: 10 15;
+  animation: dash-move 1s linear infinite;
+  filter: drop-shadow(0 0 4px #00ffe7) drop-shadow(0 0 10px #00ffe7);
+}
+
+@keyframes dash-move {
+  to {
+    stroke-dashoffset: -50;
+  }
+}
+
+
+/* Search result item hover effects */
+.search-result-item:hover {
+    background-color: rgba(0, 255, 231, 0.1) !important;
+    transform: translateX(2px);
+    transition: all 0.15s ease;
+}
+
+.search-result-item.selected {
+    background-color: rgba(0, 255, 231, 0.2) !important;
+}
+
+/* Search dropdown animation */
+#lotSearchDropdown {
+    animation: slideDown 0.2s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Field tag fade-in animation */
+#fieldTag:not(.hidden) {
+    animation: fadeInTag 0.3s ease-out;
+}
+
+@keyframes fadeInTag {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* =======================
+   WINDOW CONTROLS STYLES
+   ======================= */
+
+/* Window control buttons */
+.window-control-btn {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.window-control-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+/* Close button - app theme */
+.close-btn .window-control-dot {
+    background-color: rgba(75, 85, 99, 0.8);
+    border: 1px solid rgba(156, 163, 175, 0.3);
+}
+
+.close-btn:hover .window-control-dot {
+    background-color: #0d9488;
+    box-shadow: 0 0 8px rgba(13, 148, 136, 0.6);
+    border-color: #0d9488;
+}
+
+.close-btn:hover::after {
+    content: '×';
+    position: absolute;
+    color: #000;
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+/* Minimize button - app theme */
+.minimize-btn .window-control-dot {
+    background-color: rgba(75, 85, 99, 0.8);
+    border: 1px solid rgba(156, 163, 175, 0.3);
+}
+
+.minimize-btn:hover .window-control-dot {
+    background-color: #0d9488;
+    box-shadow: 0 0 8px rgba(13, 148, 136, 0.6);
+    border-color: #0d9488;
+}
+
+.minimize-btn:hover::after {
+    content: '−';
+    position: absolute;
+    color: #000;
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+/* Maximize button - app theme */
+.maximize-btn .window-control-dot {
+    background-color: rgba(75, 85, 99, 0.8);
+    border: 1px solid rgba(156, 163, 175, 0.3);
+}
+
+.maximize-btn:hover .window-control-dot {
+    background-color: #0d9488;
+    box-shadow: 0 0 8px rgba(13, 148, 136, 0.6);
+    border-color: #0d9488;
+}
+
+.maximize-btn:hover::after {
+    content: '+';
+    position: absolute;
+    color: #000;
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+/* Draggable header area */
+#titlebar {
+    -webkit-app-region: drag;
+}
+
+/* Make interactive elements non-draggable */
+#titlebar button,
+#titlebar input,
+#titlebar #window-controls,
+#titlebar #logoutButton,
+#titlebar #headerSearchInput,
+#titlebar .bg-pure-black\/80 {
+    -webkit-app-region: no-drag;
+}
 
 /* =======================
    LOADING ANIMATION STYLES
@@ -226,7 +539,7 @@ h2, .text-lg, .text-xl, .section-header, .modal-header h2,
 
 /* Standard body text - most common elements */
 body, p, .text-base, .text-sm, .form-input, .form-label, 
-.nav-item-text, .nav-user-name, .property-value, .modal-body,
+.nav-item-text, .property-value, .modal-body,
 .toolbar-panel label, .toolbar-panel select, .toolbar-panel input,
 .glass-section label, .control-input, .control-label, .checkbox-label {
     font-size: var(--font-size-body) !important;
@@ -234,7 +547,7 @@ body, p, .text-base, .text-sm, .form-input, .form-label,
 }
 
 /* Small text and captions */
-.text-xs, .nav-user-email, .property-key, .help-text, .caption,
+.text-xs, .property-key, .help-text, .caption,
 .floating-statistics-label, .statistics-result-field, .text-gray-400,
 .control-unit, .control-info, .forgot-password a, .error-message {
     font-size: var(--font-size-small) !important;
@@ -348,57 +661,6 @@ body {
     padding: 8px 8px 8px 8px !important; /* Reduced top padding from 72px to 8px */
 }
 
-/* Search Bar */
-.nav-search-container {
-    margin-bottom: 28px !important;
-    opacity: 1 !important;
-    transform: translateX(0) !important;
-    transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1) 0.1s !important;
-}
-
-.nav-search-wrapper {
-    position: relative !important;
-    display: flex !important;
-    align-items: center !important;
-}
-
-.nav-search-icon {
-    position: absolute !important;
-    left: 16px !important;
-    color: rgba(0, 255, 231, 0.7) !important;
-    font-size: 15px !important;
-    z-index: 1 !important;
-    transition: all 0.3s ease !important;
-}
-
-.nav-search-input {
-    width: 100% !important;
-    height: 44px !important;
-    background: rgba(0, 0, 0, 0.4) !important;
-    border: 1px solid rgba(0, 255, 231, 0.2) !important;
-    border-radius: 14px !important;
-    padding: 0 18px 0 44px !important;
-    color: var(--light-gray) !important;
-    font-size: 14px !important;
-    transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1) !important;
-    outline: none !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
-}
-
-.nav-search-input::placeholder {
-    color: rgba(224, 224, 224, 0.4) !important;
-}
-
-.nav-search-input:focus {
-    border-color: rgba(0, 255, 231, 0.6) !important;
-    box-shadow: 
-        0 0 0 3px rgba(0, 255, 231, 0.15),
-        0 0 20px rgba(0, 255, 231, 0.25),
-        inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
-    background: rgba(0, 0, 0, 0.6) !important;
-    transform: translateY(-1px) !important;
-}
 
 /* Navigation Links */
 .nav-links {
@@ -414,30 +676,31 @@ body {
 .nav-item {
     position: relative !important;
     cursor: pointer !important;
-    border-radius: 12px !important;
+    border-radius: 8px !important;
     transition: all 0.3s ease !important;
     overflow: hidden !important;
     border: none !important;
-    backdrop-filter: blur(8px) !important;
-    -webkit-backdrop-filter: blur(8px) !important;
-    width: 44px !important;
-    height: 44px !important;
+    width: auto !important;
+    height: auto !important;
     display: flex !important;
     align-items: center !important;
-    justify-content: center !important;
-    margin: 6px auto !important;
-    background: rgba(255, 255, 255, 0.09) !important;
+    justify-content: flex-start !important;
+    margin: 4px 0 !important;
+    background: transparent !important;
+    padding: 0 !important;
 }
 
 .nav-item-content {
     display: flex !important;
     align-items: center !important;
-    justify-content: center !important;
-    padding: 0 !important;
+    justify-content: flex-start !important;
+    padding: 12px 16px !important;
     position: relative !important;
     z-index: 1 !important;
     width: 100% !important;
-    height: 100% !important;
+    height: auto !important;
+    border-radius: 8px !important;
+    transition: all 0.3s ease !important;
 }
 
 .nav-item-icon {
@@ -451,44 +714,21 @@ body {
 }
 
 .nav-item-text {
-    margin-left: 18px !important;
+    margin-left: 12px !important;
     color: var(--light-gray) !important;
     font-weight: 500 !important;
-    opacity: 0 !important;
-    transform: translateX(-10px) !important;
-    transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1) !important;
+    opacity: 1 !important;
+    transform: translateX(0) !important;
+    transition: all 0.3s ease !important;
     white-space: nowrap !important;
     letter-spacing: 0.3px !important;
 }
 
-.nav-item {
-    width: auto !important;
-    height: auto !important;
-    margin: 0 !important;
-}
-
-.nav-item-content {
-    padding: 14px 16px !important;
-    justify-content: flex-start !important;
-}
-
-.nav-item-icon {
-    font-size: 16px !important;
-    min-width: 16px !important;
-}
-
-.nav-item-text {
-    opacity: 1 !important;
-    transform: translateX(0) !important;
-}
 
 /* Navigation Item States */
-.nav-item:hover {
-    background: rgba(0, 255, 231, 0.2) !important;
-    border-color: rgba(255, 255, 255, 0.25) !important;
+.nav-item:hover .nav-item-content {
+    background: rgba(0, 255, 231, 0.15) !important;
     color: white !important;
-    box-shadow: 0 4px 8px rgba(0, 255, 231, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
-    transform: scale(1.005) !important;
 }
 
 .nav-item:hover .nav-item-icon {
@@ -499,8 +739,8 @@ body {
     color: white !important;
 }
 
-.nav-item.active {
-    background: rgba(0, 255, 231, 0.15) !important;
+.nav-item.active .nav-item-content {
+    background: rgba(0, 255, 231, 0.1) !important;
     color: var(--neon-teal) !important;
 }
 
@@ -514,96 +754,6 @@ body {
 }
 
 
-/* User Profile Section */
-.nav-user-profile {
-    margin-top: auto !important;
-    padding: 16px 0 0 0 !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
-}
-
-.nav-user-content {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 8px !important;
-    border-radius: 16px !important;
-    background: rgba(0, 0, 0, 0.2) !important;
-    border: 1px solid rgba(0, 255, 231, 0.15) !important;
-    transition: all 0.3s ease !important;
-    cursor: pointer !important;
-    width: 48px !important;
-    height: 48px !important;
-    margin: 0 auto !important;
-}
-
-.nav-user-content:hover {
-    background: rgba(255, 255, 255, 0.08) !important;
-}
-
-
-.nav-user-avatar {
-    width: 32px !important;
-    height: 32px !important;
-    background: var(--neon-teal) !important;
-    border-radius: 50% !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    border: none !important;
-    box-shadow: none !important;
-    flex-shrink: 0 !important;
-    transition: all 0.3s ease !important;
-}
-
-.nav-user-initial {
-    color: var(--pure-black) !important;
-    font-weight: 700 !important;
-    font-size: 14px;
-}
-
-.nav-user-info {
-    margin-left: 12px !important;
-    flex: 1 !important;
-    opacity: 0 !important;
-    transform: translateX(-10px) !important;
-    transition: all 0.3s ease 0.1s !important;
-    overflow: hidden !important;
-}
-
-.nav-user-content {
-    width: auto !important;
-    height: auto !important;
-    margin: 0 !important;
-    padding: 12px !important;
-    justify-content: flex-start !important;
-}
-
-.nav-user-info {
-    opacity: 1 !important;
-    transform: translateX(0) !important;
-}
-
-.nav-user-name {
-    display: block !important;
-    color: var(--light-gray) !important;
-    font-weight: 600 !important;
-    font-size: 14px;
-    line-height: 1.2 !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-}
-
-.nav-user-email {
-    display: block !important;
-    color: rgba(224, 224, 224, 0.6) !important;
-    font-size: 12px;
-    line-height: 1.2 !important;
-    margin-top: 2px !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-}
 
 /* FLOATING TOOLBOX (RIGHT EDGE) */
 .floating-toolbox {
@@ -1531,27 +1681,7 @@ select option:checked,
         font-size: 14px !important;
     }
     
-    .nav-search-input {
-        height: 36px !important;
-        font-size: 13px !important;
-    }
     
-    .nav-user-avatar {
-        width: 32px !important;
-        height: 32px !important;
-    }
-    
-    .nav-user-initial {
-        font-size: 14px !important;
-    }
-    
-    .nav-user-name {
-        font-size: 13px !important;
-    }
-    
-    .nav-user-email {
-        font-size: 11px !important;
-    }
     
     /* Adjust tooltip position for mobile */
     .nav-item::after {
@@ -3598,4 +3728,75 @@ select option:checked,
 
 #layoutTitle::placeholder {
     color: rgba(224, 224, 224, 0.5);
+}
+
+/* User Profile Section in Navbar */
+.nav-user-profile {
+    margin-top: auto !important;
+    padding: 16px 12px !important;
+    border-top: 1px solid rgba(0, 255, 231, 0.2) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+    border-radius: 12px !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    transition: all 0.3s ease !important;
+}
+
+.nav-user-profile:hover {
+    background: rgba(0, 255, 231, 0.1) !important;
+    border-top: 1px solid rgba(0, 255, 231, 0.4) !important;
+}
+
+.nav-user-avatar {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 50% !important;
+    background: rgba(0, 255, 231, 0.2) !important;
+    border: 2px solid rgba(0, 255, 231, 0.4) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    transition: all 0.3s ease !important;
+}
+
+.nav-user-avatar i {
+    color: rgba(0, 255, 231, 0.9) !important;
+    font-size: 16px !important;
+}
+
+.nav-user-profile:hover .nav-user-avatar {
+    background: rgba(0, 255, 231, 0.3) !important;
+    border-color: rgba(0, 255, 231, 0.6) !important;
+    box-shadow: 0 0 12px rgba(0, 255, 231, 0.3) !important;
+}
+
+.nav-user-info {
+    flex: 1 !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+}
+
+.nav-user-name {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: rgba(224, 224, 224, 0.95) !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.nav-user-email {
+    font-size: 11px !important;
+    color: rgba(224, 224, 224, 0.6) !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
